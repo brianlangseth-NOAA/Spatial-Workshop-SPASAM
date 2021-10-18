@@ -6,6 +6,10 @@
 # This code will run a simulation experiment for the SPASAM model
 # 
 
+library(parallel)
+library(doSNOW)
+library(PBSmodelling)
+
 ###################################
 #Setting up the simulations
 ##################################
@@ -13,13 +17,14 @@
 
 #1) Do you want to run the diagnostics code before running the sims?
 
-diag.run<-1
+diag.run<-0
 # ==0 NO Do NOT run the diagnostics plots for a single run
 # ==1 YES run the diagnostics plots for a single run
 
 
 #2) Set number of simulations to perform
 nsim <-500
+nsim <- 2 #for testing purposes
 
 ######################
 #plot parameters
@@ -38,10 +43,11 @@ median.col<-"grey95"
 
 # To run this simulation a folder for each scenario will need to be placed in the master directory. Each folder will need separate folders named 'Operating_Model' and 'EM_model' with the exe files and .DAT for the OM only. The Code will do the rest. Be sure that the TIM_diagnostics.R code is also in the master directory if diag_switch==1 
 #
+wd<-"C:/Users/Brian.Langseth/Desktop/SILC test"
 
 #5) set master file with holding the runs 
 direct_master<-wd  #"F:\\NOAA FILES\\Research\\SPASAM\\CAPAM Runs\\simple example"
-#setwd(direct_master)
+setwd(direct_master)
 
 #list files in the directory
 #files<-list.files(direct_master) # these folders in the master will be the individual scenarios 
@@ -102,7 +108,8 @@ results_bad<-paste0(diag_direct,"\\Results_NOT_conv",sep="")
 # RUN TIM DIAGNOSTICS
 ###############################################################
 
-
+#TO DO: Need to test these
+  
 # generates a single run diagnotic of the OM and EM and
 # moves files from diagnostic run to the diagnostics folder
 
@@ -157,18 +164,19 @@ ls=foreach(j=1:nsim,.options.snow = opts,.combine='rbind',.packages =c('PBSmodel
   
 #change seed for OM
 setwd(paste0(runs_dir,"\\Run",j,"\\Operating_Model",sep=""))
-      
+
+#Need to update these to two lines down instead of 1      
 SIM.DAT=readLines(paste0(OM_name,".dat"),n=-1)
-SIM.DAT[(grep("myseed_yield",SIM.DAT)+1)]=411+j
-SIM.DAT[(grep("myseed_survey",SIM.DAT)+1)]=1110+j
-SIM.DAT[(grep("myseed_F",SIM.DAT)+1)]=45651+j
-SIM.DAT[(grep("myseed_T",SIM.DAT)+1)]=32+j
-SIM.DAT[(grep("myseed_rec_devs",SIM.DAT)+1)]=23440+j
+SIM.DAT[(grep("myseed_yield",SIM.DAT)+2)]=411+j
+SIM.DAT[(grep("myseed_survey",SIM.DAT)+2)]=1110+j
+SIM.DAT[(grep("myseed_F",SIM.DAT)+2)]=45651+j
+SIM.DAT[(grep("myseed_T",SIM.DAT)+2)]=32+j
+SIM.DAT[(grep("myseed_rec_devs",SIM.DAT)+2)]=23440+j
 #SIM.DAT[(grep("myseed_rec_apport",SIM.DAT)+1)]=4199+j
-SIM.DAT[(grep("myseed_rec_index",SIM.DAT)+1)]=5610+j
-SIM.DAT[(grep("myseed_survey_age",SIM.DAT)+1)]=6831+j
-SIM.DAT[(grep("myseed_catch_age",SIM.DAT)+1)]=7157+j
-SIM.DAT[(grep("myseed_tag",SIM.DAT)+1)]=10009+j
+SIM.DAT[(grep("myseed_rec_index",SIM.DAT)+2)]=5610+j
+SIM.DAT[(grep("myseed_survey_age",SIM.DAT)+2)]=6831+j
+SIM.DAT[(grep("myseed_catch_age",SIM.DAT)+2)]=7157+j
+SIM.DAT[(grep("myseed_tag",SIM.DAT)+2)]=10009+j
 
 writeLines(SIM.DAT,paste0(OM_name,".dat"))
 
@@ -267,7 +275,7 @@ if(file.exists("TIM_EM.cor")==FALSE)
 
 return(temp)
   
-}
+}  #end of ls call
 
 
 # end parallel job
@@ -297,6 +305,8 @@ write.csv(file="Sim_Stats.csv",Sim.Stats)
 #Grabbing Values from converged report files
 ##############################################################
 ##############################################################
+
+#TO DO: Test once have converged runs
 
 # run the value grab
 {
@@ -536,6 +546,9 @@ saveRDS(vg, file="Sim_data.RData")
 ################################################################################
 # Load Sim results for plotting
 #################################################################################
+
+#TO DO: Test once have converged runs
+
 #reload directory information for plotting
  
 #start here if you have already completed the SIMS and saved the data
