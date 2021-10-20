@@ -17,7 +17,7 @@ library(PBSmodelling)
 
 #1) Do you want to run the diagnostics code before running the sims?
 
-diag.run<-0
+diag.run<-1
 # ==0 NO Do NOT run the diagnostics plots for a single run
 # ==1 YES run the diagnostics plots for a single run
 
@@ -108,8 +108,6 @@ results_bad<-paste0(diag_direct,"\\Results_NOT_conv",sep="")
 # RUN TIM DIAGNOSTICS
 ###############################################################
 
-#TO DO: Need to test these
-  
 # generates a single run diagnotic of the OM and EM and
 # moves files from diagnostic run to the diagnostics folder
 

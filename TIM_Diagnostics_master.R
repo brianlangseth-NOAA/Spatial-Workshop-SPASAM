@@ -10,6 +10,12 @@
 
 
 #load libraries
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(matrixStats)
+library(grid)
+library(gridExtra)
 
 ######################################################################
 ########### PLOT SETTINGS ############################################
@@ -84,7 +90,7 @@ EM_name<-"TIM_EM"
 ########### AUTOMATED...DO NOT CHANGE ######################################
 ############################################################################
 
-# One touch operation...run the whole code. Comment out this and very last bracket to run sections manually
+# One touch operation...function to run the whole code once.
 
 
 #{  
@@ -1375,41 +1381,42 @@ OM_error_table<-cbind(OM_error_table,temp)
 ###building table
 
 if(npops==1){
-rec_om<-grep("_sigma_recruit",OM_dat, fixed = T)+1
+rec_om<-grep("#sigma_recruit",OM_dat, fixed = T)+2 
 OM_error_table[1,2]<-OM_dat[rec_om]
   
-rec_app_om<-grep("_sigma_rec_prop",OM_dat, fixed = T)+1
+rec_app_om<-grep("#sigma_rec_prop",OM_dat, fixed = T)+2
 OM_error_table[2,2]<-OM_dat[rec_app_om]
 
 }
 
 
 if(npops>1){
-rec_om<-grep("_sigma_recruit",OM_dat, fixed = T)+1
+rec_om<-grep("#sigma_recruit",OM_dat, fixed = T)+2
 OM_error_table[1,2:(1+nreg_OM)]<-OM_dat[rec_om:(rec_om+(nreg_OM-1))]
 
-rec_app_om<-grep("_sigma_rec_prop",OM_dat, fixed = T)+1
+rec_app_om<-grep("#sigma_rec_prop",OM_dat, fixed = T)+2
 OM_error_table[2,2:(1+nreg_OM)]<-OM_dat[rec_app_om:(rec_app_om+(nreg_OM-1))]
 }
 
 
-F_om<-grep("_sigma_F",OM_dat, fixed = T)+1
+F_om<-grep("_sigma_F",OM_dat, fixed = T)+2
 OM_error_table[3,2:(1+nreg_OM)]<-OM_dat[F_om:(F_om+(nreg_OM-1))]
 
-rec_ind_om<-grep("_rec_index_sigma",OM_dat, fixed = T)+1
+rec_ind_om<-grep("#rec_index_sigma",OM_dat, fixed = T)+2
 OM_error_table[4,2:(1+nreg_OM)]<-OM_dat[rec_ind_om:(rec_ind_om+(nreg_OM-1))]
 
-surv_ind_om<-grep("_sigma_survey",OM_dat, fixed = T)+1
-OM_error_table[5,2:(1+nreg_OM)]<-OM_dat[surv_ind_om:(surv_ind_om+(nreg_OM-1))]
-
-catch_om<-grep("_sigma_catch",OM_dat, fixed = T)+1
-OM_error_table[6,2:(1+nreg_OM)]<-OM_dat[catch_om:(catch_om+(nreg_OM-1))]
-
-ncatch_om<-grep("_SIM_ncatch",OM_dat, fixed = T)+1
-OM_error_table[7,2:(1+nreg_OM)]<-OM_dat[ncatch_om:(ncatch_om+(nreg_OM-1))]
-
-nsurvey_om<-grep("_SIM_nsurvey",OM_dat, fixed = T)+1
-OM_error_table[8,2:(1+nreg_OM)]<-OM_dat[nsurvey_om:(nsurvey_om+(nreg_OM-1))]
+#Have to add space to the rest to differentiate from sigma_survey_overlap (when natal_homing_switch==1)
+  surv_ind_om<-grep("#sigma_survey ",OM_dat, fixed = T)+2
+  OM_error_table[5,2:(1+nreg_OM)]<-OM_dat[surv_ind_om:(surv_ind_om+(nreg_OM-1))]
+  
+  catch_om<-grep("#sigma_catch ",OM_dat, fixed = T)+2
+  OM_error_table[6,2:(1+nreg_OM)]<-OM_dat[catch_om:(catch_om+(nreg_OM-1))]
+  
+  ncatch_om<-grep("#SIM_ncatch ",OM_dat, fixed = T)+3
+  OM_error_table[7,2:(1+nreg_OM)]<-OM_dat[ncatch_om:(ncatch_om+(nreg_OM-1))]
+  
+  nsurvey_om<-grep("#SIM_nsurvey ",OM_dat, fixed = T)+3
+  OM_error_table[8,2:(1+nreg_OM)]<-OM_dat[nsurvey_om:(nsurvey_om+(nreg_OM-1))]
 
 
 OM_table<-tableGrob(OM_error_table)
@@ -1466,7 +1473,7 @@ EM_est_table[2,2:ncol(EM_est_table)]<-round(out$R_ave,2)
 
 
 # adding in selectivity values based on specification
-if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==0)
+if(OM_dat[grep("select_switch_EM$",OM_dat, fixed = F)+7]==0)
 {
   EM_est_table[3,2:ncol(EM_est_table)]<-NA
   EM_est_table[4,2:ncol(EM_est_table)]<-NA
@@ -1474,7 +1481,7 @@ if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==0)
   EM_est_table[6,2:ncol(EM_est_table)]<-NA
 }
 
-if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==0)
+if(OM_dat[grep("select_switch_survey_EM$",OM_dat, fixed = F)+7]==0)
 {
   EM_est_table[7,2:ncol(EM_est_table)]<-NA
   EM_est_table[8,2:ncol(EM_est_table)]<-NA
@@ -1482,7 +1489,7 @@ if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==0)
   EM_est_table[10,2:ncol(EM_est_table)]<-NA
 }
 
-if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==1)
+if(OM_dat[grep("select_switch_EM$",OM_dat, fixed = F)+7]==1)
 {
   EM_est_table[3,2:ncol(EM_est_table)]<-round(out$sel_beta1,2)
   EM_est_table[4,2:ncol(EM_est_table)]<-round(out$sel_beta2,2)
@@ -1490,7 +1497,7 @@ if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==1)
   EM_est_table[6,2:ncol(EM_est_table)]<-NA
 }
 
-if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==1)
+if(OM_dat[grep("select_switch_survey_EM$",OM_dat, fixed = F)+7]==1)
 {
 EM_est_table[7,2:ncol(EM_est_table)]<-round(out$sel_beta1_survey,2)
 EM_est_table[8,2:ncol(EM_est_table)]<-round(out$sel_beta2_survey,2)
@@ -1498,7 +1505,7 @@ EM_est_table[9,2:ncol(EM_est_table)]<-NA
 EM_est_table[10,2:ncol(EM_est_table)]<-NA
 }
 
-if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==2)
+if(OM_dat[grep("select_switch_EM$",OM_dat, fixed = F)+7]==2)
 {
   EM_est_table[3,2:ncol(EM_est_table)]<-round(out$sel_beta1,2)
   EM_est_table[4,2:ncol(EM_est_table)]<-round(out$sel_beta2,2)
@@ -1507,7 +1514,7 @@ if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==2)
 }
 
 
-if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==2)
+if(OM_dat[grep("select_switch_survey_EM$",OM_dat, fixed = F)+7]==2)
 {
 EM_est_table[7,2:ncol(EM_est_table)]<-round(out$sel_beta1_survey,2)
 EM_est_table[8,2:ncol(EM_est_table)]<-round(out$sel_beta2_survey,2)
@@ -1539,7 +1546,7 @@ OM_true_table[2,2:ncol(OM_true_table)]<-round(out$R_ave_TRUE,2)
 
 
 # adding in selectivity values based on specification
-if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==0)
+if(OM_dat[grep("select_switch_EM$",OM_dat, fixed = F)+7]==0)
 {
   OM_true_table[3,2:ncol(OM_true_table)]<-NA
   OM_true_table[4,2:ncol(OM_true_table)]<-NA
@@ -1547,7 +1554,7 @@ if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==0)
   OM_true_table[6,2:ncol(OM_true_table)]<-NA
 }
 
-if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==0)
+if(OM_dat[grep("select_switch_survey_EM$",OM_dat, fixed = F)+7]==0)
 {
   OM_true_table[7,2:ncol(OM_true_table)]<-NA
   OM_true_table[8,2:ncol(OM_true_table)]<-NA
@@ -1555,7 +1562,7 @@ if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==0)
   OM_true_table[10,2:ncol(OM_true_table)]<-NA
 }
 
-if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==1)
+if(OM_dat[grep("select_switch_EM$",OM_dat, fixed = F)+7]==1)
 {
   OM_true_table[3,2:ncol(OM_true_table)]<-round(out$sel_beta1_TRUE,2)
   OM_true_table[4,2:ncol(OM_true_table)]<-round(out$sel_beta2_TRUE,2)
@@ -1563,7 +1570,7 @@ if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==1)
   OM_true_table[6,2:ncol(OM_true_table)]<-NA
 }
 
-if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==1)
+if(OM_dat[grep("select_switch_survey_EM$",OM_dat, fixed = F)+7]==1)
 {
   OM_true_table[7,2:ncol(OM_true_table)]<-round(out$sel_beta1_survey_TRUE,2)
   OM_true_table[8,2:ncol(OM_true_table)]<-round(out$sel_beta2_survey_TRUE,2)
@@ -1571,7 +1578,7 @@ if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==1)
   OM_true_table[10,2:ncol(OM_true_table)]<-NA
 }
 
-if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==2)
+if(OM_dat[grep("select_switch_EM$",OM_dat, fixed = F)+7]==2)
 {
   OM_true_table[3,2:ncol(OM_true_table)]<-round(out$sel_beta1_TRUE,2)
   OM_true_table[4,2:ncol(OM_true_table)]<-round(out$sel_beta2_TRUE,2)
@@ -1580,7 +1587,7 @@ if(OM_dat[grep("select_switch_EM",OM_dat, fixed = T)+4]==2)
 }
 
 
-if(OM_dat[grep("select_switch_survey_EM",OM_dat, fixed = T)+4]==2)
+if(OM_dat[grep("select_switch_survey_EM$",OM_dat, fixed = F)+7]==2)
 {
   OM_true_table[7,2:ncol(OM_true_table)]<-round(out$sel_beta1_survey_TRUE,2)
   OM_true_table[8,2:ncol(OM_true_table)]<-round(out$sel_beta2_survey_TRUE,2)
@@ -1628,7 +1635,7 @@ if(out$npops_OM>1 && out$npops==1 && out$nregions==1){
 
 
 #is this a diagnostics run?
-diagnostic<-OM_dat[(grep("diagnostics_switch",OM_dat, fixed = T)+3)]
+diagnostic<-OM_dat[(grep("diagnostics_switch",OM_dat, fixed = T)+5)]
 
 if(diagnostic==0)
 {text2<-"Diagnostic Run: NO. Uses OBS values as data inputs"}
@@ -1977,7 +1984,7 @@ print(out$OBS_survey_fleet_bio)
 
 sink()
 
-}
+} #end of make.plots
 
 #make.plots()
 
