@@ -20,7 +20,7 @@
 GLOBALS_SECTION
   #include "admodel.h"
   #include "qfclib.h"
-  #define EOUT(var) cout <<#var<<" "<<var<<endl;
+  #define EOUT(var) cout << #var <<" "<<var<<endl;
 
 TOP_OF_MAIN_SECTION
   arrmblsize=500000000;
@@ -71,7 +71,7 @@ DATA_SECTION
   init_int nages
    // number of ages (last age is a plus group)
    
-  init_number nyrs
+  init_int nyrs
    // number of years in the model
    // NOTE: for reference point sims, MSY_model_type_switch>0,  (e.g., F_MSY search), should set this sufficiently high (>100) to approximate equilibrium
  
@@ -774,9 +774,9 @@ DATA_SECTION
    //==2 Beverton-Holt population-recruit functions based on population-specific estimated steepness, R0 (R_ave)
          // NOTE: SRR DOES NOT TAKE INTO ACCOUNT SPATIAL DYNAMICS (IE, MOVEMENT AMONG POPULATIONS OR REGIONS); SEE README TOPIC AT TOP OF DAT FILE
    //==3 environmental recruitment - sine fucntion based on amplitude and frequency
-   //==4 Beverton-Holt population-recruit functions based on population-specific fixed (at true value) steepness, estimated R0 (R_ave)
-   //==5 Beverton-Holt stock-recruit functions based on stock-specific fixed (at true value) steepness and R0 (R_ave) (i.e., both SRR parameters fixed at true values)
-   //==6 stock-recruit relationship assumes an average value based on fixed (at true value) R_ave
+   //==4 (NOT IMPLEMENTED...USE OPTION 2 for BH) Beverton-Holt population-recruit functions based on population-specific fixed (at true value) steepness, estimated R0 (R_ave)
+   //==5 (NOT IMPLEMENTED...USE OPTION 2 for BH) Beverton-Holt stock-recruit functions based on stock-specific fixed (at true value) steepness and R0 (R_ave) (i.e., both SRR parameters fixed at true values)
+   //==6 (NOT IMPLEMENTED...USE OPTION 1 for AVE R) stock-recruit relationship assumes an average value based on fixed (at true value) R_ave
    
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   init_int ph_lmr                                                           // phase for stock-recruit relationship log_mean_recruitment (LMR; or R0, virgin recruitment) estimation, used when Rec_type_EM==1 OR 2 OR 4
@@ -4144,7 +4144,6 @@ FUNCTION get_tag_recaptures
   /////////////////////////////////////////////////////////////////////////////
   //reporting rate is assumed to be function of release event and recap location (not a function of recap year...could expand to this, but not priority at momement)
   ///////////////////////////////////////////////////////////////////////////////////
-
  if(do_tag==1)
   {
    for(int x=1; x<=nyrs_release; x++)
@@ -4280,7 +4279,7 @@ FUNCTION get_tag_recaptures
       xx=yrs_releases(x);
       for (int a=1;a<=nages;a++) //release age //because accounting for release age, don't need to account for recap age, just adjust mortality and T, to use plus group value if recapture age exceeds max age
         {
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4449,7 +4448,7 @@ FUNCTION get_tag_recaptures
          }
         }
        }
-
+  
  for (int i=1;i<=npops;i++)
   {
    for (int n=1;n<=nregions(i);n++)
@@ -4460,7 +4459,7 @@ FUNCTION get_tag_recaptures
       for (int a=1;a<=nages;a++) //release age //because accounting for release age, don't need to account for recap age, just adjust mortality and T, to use plus group value if recapture age exceeds max age
         {
         total_recap_temp.initialize();
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4485,7 +4484,7 @@ FUNCTION get_tag_recaptures
       xx=yrs_releases(x);
       for (int a=1;a<=nages;a++) //release age //because accounting for release age, don't need to account for recap age, just adjust mortality and T, to use plus group value if recapture age exceeds max age
         {
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4526,7 +4525,7 @@ FUNCTION get_tag_recaptures
       xx=yrs_releases(x);
        for (int a=1;a<=nages;a++) //release age 
         {
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4536,7 +4535,7 @@ FUNCTION get_tag_recaptures
              }
             }
            }
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4547,7 +4546,7 @@ FUNCTION get_tag_recaptures
             }
            }
          //tag_prop_temp2=0;
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4559,15 +4558,15 @@ FUNCTION get_tag_recaptures
             }
              for(int s=1;s<=(max_life_tags*sum(nregions)+1);s++) //create temp array that has columns of recap prob for each release cohort and add not recap probability to final entry of temp array
               {
-              if(s<(min(max_life_tags,ny-xx+1)*sum(nregions)+1))
+              if(s<(min(max_life_tags,nyrs-xx+1)*sum(nregions)+1))
               {
                tag_prop_final(i,n,x,a,s)=tag_prop_temp2(i,n,x,a,s);
               }
-              if(s==(min(max_life_tags,ny-xx+1)*sum(nregions)+1) && max_life_tags<=(ny-xx+1)) //add not recap probability to final entry of temp array
+              if(s==(min(max_life_tags,nyrs-xx+1)*sum(nregions)+1) && max_life_tags<=(nyrs-xx+1)) //add not recap probability to final entry of temp array
               {
                tag_prop_final(i,n,x,a,s)=tag_prop_not_rec(i,n,x,a);  //for estimation model will use this version of tag_prop in likelihood
               }
-              if(s==(min(max_life_tags,ny-xx+1)*sum(nregions)+1) && max_life_tags>(ny-xx+1)) //add not recap probability to final entry of temp array with adjustment for release events where model ends before max_life_tags (so NR remains in last state)
+              if(s==(min(max_life_tags,nyrs-xx+1)*sum(nregions)+1) && max_life_tags>(nyrs-xx+1)) //add not recap probability to final entry of temp array with adjustment for release events where model ends before max_life_tags (so NR remains in last state)
               {
                tag_prop_final(i,n,x,a,(max_life_tags*sum(nregions)+1))=tag_prop_not_rec(i,n,x,a);  //for estimation model will use this version of tag_prop in likelihood
               }
@@ -4588,7 +4587,7 @@ FUNCTION get_tag_recaptures
       xx=yrs_releases(x);
       for (int a=1;a<=nages;a++) //release age //because accounting for release age, don't need to account for recap age, just adjust mortality and T, to use plus group value if recapture age exceeds max age
         {
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4615,7 +4614,7 @@ FUNCTION get_tag_recaptures
       xx=yrs_releases(x);
       for (int a=1;a<=nages;a++) //release age //because accounting for release age, don't need to account for recap age, just adjust mortality and T, to use plus group value if recapture age exceeds max age
         {
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4646,7 +4645,7 @@ FUNCTION get_tag_recaptures
     for(int x=1; x<=nyrs_release; x++)
      {
       xx=yrs_releases(x);
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4656,7 +4655,7 @@ FUNCTION get_tag_recaptures
              }
             }
            }
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4666,7 +4665,7 @@ FUNCTION get_tag_recaptures
               }
             }
            }
-         for(int y=1;y<=min(max_life_tags,ny-xx+1);y++)  //recap year
+         for(int y=1;y<=min(max_life_tags,nyrs-xx+1);y++)  //recap year
           {
            for(int j=1;j<=npops;j++) //recap stock
             {
@@ -4678,15 +4677,15 @@ FUNCTION get_tag_recaptures
             }
              for(int s=1;s<=(max_life_tags*sum(nregions)+1);s++) //create temp array that has columns of recap prob for each release cohort and add not recap probability to final entry of temp array
               {
-              if(s<(min(max_life_tags,ny-xx+1)*sum(nregions)+1))
+              if(s<(min(max_life_tags,nyrs-xx+1)*sum(nregions)+1))
               {
                tag_prop_final_no_age(i,n,x,s)=tag_prop_temp2_no_age(i,n,x,s);
               }
-              if(s==(min(max_life_tags,ny-xx+1)*sum(nregions)+1) && max_life_tags<=(ny-xx+1)) //add not recap probability to final entry of temp array
+              if(s==(min(max_life_tags,nyrs-xx+1)*sum(nregions)+1) && max_life_tags<=(nyrs-xx+1)) //add not recap probability to final entry of temp array
               {
                tag_prop_final_no_age(i,n,x,s)=tag_prop_not_rec_no_age(i,n,x);  //for estimation model will use this version of tag_prop in likelihood
               }
-              if(s==(min(max_life_tags,ny-xx+1)*sum(nregions)+1) && max_life_tags>(ny-xx+1)) //add not recap probability to final entry of temp array with adjustment for release events where model ends before max_life_tags (so NR remains in last state)
+              if(s==(min(max_life_tags,nyrs-xx+1)*sum(nregions)+1) && max_life_tags>(nyrs-xx+1)) //add not recap probability to final entry of temp array with adjustment for release events where model ends before max_life_tags (so NR remains in last state)
               {
                tag_prop_final_no_age(i,n,x,(max_life_tags*sum(nregions)+1))=tag_prop_not_rec_no_age(i,n,x);  //for estimation model will use this version of tag_prop in likelihood
               }
@@ -4843,6 +4842,7 @@ FUNCTION get_observed_tag_recaptures
                 } //end do_age_tag_switch loop
   } //end do_tag loop
 
+ //EOUT(recaps(1))
 FUNCTION evaluate_the_objective_function
    f=0.0;
 
@@ -4904,86 +4904,86 @@ REPORT_SECTION
 
 
  //Aggregating OBS values and vitals for panmictic EM
- if(EM_structure==0 && OM_structure>0){ 
-  for (int y=1;y<=nyrs;y++)
-   {
-   for (int p=1;p<=npops;p++)
-    {
-    for (int r=1;r<=nregions(p);r++)
-      {
-      for (int z=1;z<=nfleets(p);z++)
-        {
-         for(int a=1;a<=nages;a++)
-          {
+ //if(EM_structure==0 && OM_structure>0){ 
+ // for (int y=1;y<=nyrs;y++)
+ //  {
+ //  for (int p=1;p<=npops;p++)
+ //   {
+ //   for (int r=1;r<=nregions(p);r++)
+ //     {
+ //     for (int z=1;z<=nfleets(p);z++)
+ //       {
+ //        for(int a=1;a<=nages;a++)
+ //         {
        //aggregating weight at age
-        input_weight_region_temp(p,a,r)=input_weight(p,r,a)*abund_frac_region(p,r);//rearrange to summarize and weight for output
-        input_weight_region(p,a)=sum(input_weight_region_temp(p,a));
-        input_weight_population_temp(a,p)=input_weight_region(p,a);
-        input_weight_population(a)=sum(input_weight_population_temp(a));
+ //       input_weight_region_temp(p,a,r)=input_weight(p,r,a)*abund_frac_region(p,r);//rearrange to summarize and weight for output
+ //       input_weight_region(p,a)=sum(input_weight_region_temp(p,a));
+ //       input_weight_population_temp(a,p)=input_weight_region(p,a);
+ //       input_weight_population(a)=sum(input_weight_population_temp(a));
 
         //aggregating catch weight at age
-        input_catch_weight_region_temp(p,a,r)=input_catch_weight(p,r,a)*abund_frac_region(p,r);//sum by region
-        input_catch_weight_region(p,a)=sum(input_catch_weight_region_temp(p,a));
-        input_catch_weight_population_temp(a,p)=input_catch_weight_region(p,a);
-        input_catch_weight_population(a)=sum(input_catch_weight_population_temp(a));
+ //       input_catch_weight_region_temp(p,a,r)=input_catch_weight(p,r,a)*abund_frac_region(p,r);//sum by region
+ //       input_catch_weight_region(p,a)=sum(input_catch_weight_region_temp(p,a));
+ //       input_catch_weight_population_temp(a,p)=input_catch_weight_region(p,a);
+ //       input_catch_weight_population(a)=sum(input_catch_weight_population_temp(a));
 
         //aggregating fecundity
-        fecundity_region_temp(p,a,r)=fecundity(p,r,a)*abund_frac_region(p,r);//sum by region
-        fecundity_region(p,a)=sum(fecundity_region_temp(p,a));
-        fecundity_population_temp(a,p)=fecundity_region(p,a);
-        fecundity_population(a)=sum(fecundity_population_temp(a));
+ //       fecundity_region_temp(p,a,r)=fecundity(p,r,a)*abund_frac_region(p,r);//sum by region
+ ///       fecundity_region(p,a)=sum(fecundity_region_temp(p,a));
+ //       fecundity_population_temp(a,p)=fecundity_region(p,a);
+ //       fecundity_population(a)=sum(fecundity_population_temp(a));
 
         //aggregating maturity
-        maturity_region_temp(p,a,r)=maturity(p,r,a)*abund_frac_region(p,r);//sum by region
-        maturity_region(p,a)=sum(maturity_region_temp(p,a));
-        maturity_population_temp(a,p)=maturity_region(p,a);
-        maturity_population(a)=sum(maturity_population_temp(a));
+ //       maturity_region_temp(p,a,r)=maturity(p,r,a)*abund_frac_region(p,r);//sum by region
+ //       maturity_region(p,a)=sum(maturity_region_temp(p,a));
+ //       maturity_population_temp(a,p)=maturity_region(p,a);
+  //      maturity_population(a)=sum(maturity_population_temp(a));
 
         //aggregating selectivity
-        selectivity_age_temp(p,a,z,r)=selectivity_age(p,r,a,z)*abund_frac_region(p,r);
-        selectivity_age_pop(p,a,z)=sum(selectivity_age_temp(p,a,z));
-        survey_selectivity_age_temp(p,a,z,r)=survey_selectivity_age(p,r,a,z)*abund_frac_region(p,r);
-        survey_selectivity_age_pop(p,a,z)=sum(survey_selectivity_age_temp(p,a,z));
+ //       selectivity_age_temp(p,a,z,r)=selectivity_age(p,r,a,z)*abund_frac_region(p,r);
+ //       selectivity_age_pop(p,a,z)=sum(selectivity_age_temp(p,a,z));
+ //       survey_selectivity_age_temp(p,a,z,r)=survey_selectivity_age(p,r,a,z)*abund_frac_region(p,r);
+ //       survey_selectivity_age_pop(p,a,z)=sum(survey_selectivity_age_temp(p,a,z));
 
         //aggregating the age comps
 
         //survey
-        OBS_survey_prop_temp(p,r,y,a,z)=OBS_survey_prop(p,r,z,y,a);
-        OBS_survey_prop_temp2(p,r,y,a)=sum(OBS_survey_prop_temp(p,r,y,a));
-        OBS_survey_prop_temp3(p,r,y,a)=OBS_survey_prop_temp2(p,r,y,a)*abund_frac_age_region(p,r,y,a);
-        OBS_survey_prop_temp4(p,y,a,r)=OBS_survey_prop_temp3(p,r,y,a);
-        OBS_survey_prop_population(p,y,a)=sum(OBS_survey_prop_temp4(p,y,a));
-        OBS_survey_prop_pan_temp(y,a,p)= OBS_survey_prop_population(p,y,a);
-        OBS_survey_prop_pan(y,a)=sum(OBS_survey_prop_pan_temp(y,a));
+ //        OBS_survey_prop_temp(p,r,y,a,z)=OBS_survey_prop(p,r,z,y,a);
+ //        OBS_survey_prop_temp2(p,r,y,a)=sum(OBS_survey_prop_temp(p,r,y,a));
+ //       OBS_survey_prop_temp3(p,r,y,a)=OBS_survey_prop_temp2(p,r,y,a)*abund_frac_age_region(p,r,y,a);
+ //       OBS_survey_prop_temp4(p,y,a,r)=OBS_survey_prop_temp3(p,r,y,a);
+ //       OBS_survey_prop_population(p,y,a)=sum(OBS_survey_prop_temp4(p,y,a));
+ //       OBS_survey_prop_pan_temp(y,a,p)= OBS_survey_prop_population(p,y,a);
+ //       OBS_survey_prop_pan(y,a)=sum(OBS_survey_prop_pan_temp(y,a));
 
         //catch
-        OBS_catch_prop_temp(p,r,y,a,z)= OBS_catch_prop(p,r,z,y,a);
-        OBS_catch_prop_temp2(p,r,y,a)=sum(OBS_catch_prop_temp(p,r,y,a));
-        OBS_catch_prop_temp3(p,r,y,a)= OBS_catch_prop_temp2(p,r,y,a)*abund_frac_age_region(p,r,y,a);
-        OBS_catch_prop_temp4(p,y,a,r)= OBS_catch_prop_temp3(p,r,y,a);
-        OBS_catch_prop_population(p,y,a)=sum(OBS_catch_prop_temp4(p,y,a));
-        OBS_catch_prop_pan_temp(y,a,p)= OBS_catch_prop_population(p,y,a);
-        OBS_catch_prop_pan(y,a)=sum(OBS_catch_prop_pan_temp(y,a));
+ //       OBS_catch_prop_temp(p,r,y,a,z)= OBS_catch_prop(p,r,z,y,a);
+ //       OBS_catch_prop_temp2(p,r,y,a)=sum(OBS_catch_prop_temp(p,r,y,a));
+ //       OBS_catch_prop_temp3(p,r,y,a)= OBS_catch_prop_temp2(p,r,y,a)*abund_frac_age_region(p,r,y,a);
+ //       OBS_catch_prop_temp4(p,y,a,r)= OBS_catch_prop_temp3(p,r,y,a);
+ //       OBS_catch_prop_population(p,y,a)=sum(OBS_catch_prop_temp4(p,y,a));
+ //       OBS_catch_prop_pan_temp(y,a,p)= OBS_catch_prop_population(p,y,a);
+ //       OBS_catch_prop_pan(y,a)=sum(OBS_catch_prop_pan_temp(y,a));
 
 
-        } //end age loop
-        } //end fleets loop
+ //       } //end age loop
+ //       } //end fleets loop
 
         //proportion female
-        prop_fem_temp(p,r)= prop_fem(p,r)*abund_frac_region(p,r); 
-        prop_fem_pan=sum(prop_fem_temp);
-        rec_index_temp(p,y,r)=rec_index_BM(p,r,y)*abund_frac_region_year(p,r,y); //rearrange and weight for summing
+ //       prop_fem_temp(p,r)= prop_fem(p,r)*abund_frac_region(p,r); 
+ //       prop_fem_pan=sum(prop_fem_temp);
+ //       rec_index_temp(p,y,r)=rec_index_BM(p,r,y)*abund_frac_region_year(p,r,y); //rearrange and weight for summing
 
-       } //end reg loop
+ //      } //end reg loop
 
        //rec index
-        rec_index_BM_population(p,y)=sum(rec_index_temp(p,y));// combined by region
-        rec_index_temp2(y,p)=rec_index_BM_population(p,y);
-        rec_index_pan(y)=sum(rec_index_temp2(y));//npops; combined by populations
+ //       rec_index_BM_population(p,y)=sum(rec_index_temp(p,y));// combined by region
+ //       rec_index_temp2(y,p)=rec_index_BM_population(p,y);
+ //       rec_index_pan(y)=sum(rec_index_temp2(y));//npops; combined by populations
         
-      } //end pop loop          
-     } //end year loop
-  }
+ //     } //end pop loop          
+ //    } //end year loop
+ // }
 
 
 //Additional model structure parameters
@@ -5331,110 +5331,110 @@ REPORT_SECTION
 ////////////////////////////////////////////////////
 
 //Spatial to panmictic EM inputs
-   if(EM_structure==0 && OM_structure>=0){ 
-      report<<"#input_weight"<<endl;
-      report<<input_weight_population<<endl;
-      report<<"#input_catch_weight"<<endl;
-      report<<input_catch_weight_population<<endl;
-      report<<"#fecundity"<<endl;
-      report<<fecundity_population<<endl;
-      report<<"#maturity"<<endl;
-      report<<maturity_population<<endl;
-      report<<"#prop_fem"<<endl; 
-      report<<prop_fem_pan<<endl;
-      report<<"#OBS_rec_index_BM"<<endl;
-      report<<rec_index_pan<<endl;
+//   if(EM_structure==0 && OM_structure>=0){ 
+//      report<<"#input_weight"<<endl;
+//      report<<input_weight_population<<endl;
+//      report<<"#input_catch_weight"<<endl;
+//      report<<input_catch_weight_population<<endl;
+//      report<<"#fecundity"<<endl;
+//      report<<fecundity_population<<endl;
+//      report<<"#maturity"<<endl;
+//      report<<maturity_population<<endl;
+//      report<<"#prop_fem"<<endl; 
+//      report<<prop_fem_pan<<endl;
+//      report<<"#OBS_rec_index_BM"<<endl;
+//      report<<rec_index_pan<<endl;
 
  //for straight panmictic EM 
-    if(sum(nfleets_EM)==1){
-      report<<"#OBS_survey_fleet"<<endl;
-      report<<OBS_survey_total_bio<<endl;
-      report<<"#OBS_survey_fleet_bio_se_EM"<<endl;
-      report<<OBS_survey_fleet_bio_se_EM<<endl;
-      report<<"#OBS_survey_prop"<<endl;
-      report<<OBS_survey_prop_pan<<endl;
-      report<<"#OBS_survey_prop_N_EM"<<endl;
-      report<<OBS_survey_prop_N_EM<<endl;
-      report<<"#OBS_yield_fleet"<<endl;
-      report<<OBS_yield_total<<endl;
-      report<<"#OBS_yield_fleet_se_EM"<<endl;
-      report<<OBS_yield_fleet_se_EM<<endl;    
-      report<<"#OBS_catch_prop"<<endl;
-      report<<OBS_catch_prop_pan<<endl; 
-      report<<"#OBS_catch_prop_N_EM"<<endl;
-      report<<OBS_catch_prop_N_EM<<endl;
+ //   if(sum(nfleets_EM)==1){
+ //     report<<"#OBS_survey_fleet"<<endl;
+ //     report<<OBS_survey_total_bio<<endl;
+ //     report<<"#OBS_survey_fleet_bio_se_EM"<<endl;
+ //     report<<OBS_survey_fleet_bio_se_EM<<endl;
+ //     report<<"#OBS_survey_prop"<<endl;
+ //     report<<OBS_survey_prop_pan<<endl;
+ //     report<<"#OBS_survey_prop_N_EM"<<endl;
+ //     report<<OBS_survey_prop_N_EM<<endl;
+ //     report<<"#OBS_yield_fleet"<<endl;
+ //     report<<OBS_yield_total<<endl;
+ //     report<<"#OBS_yield_fleet_se_EM"<<endl;
+ //     report<<OBS_yield_fleet_se_EM<<endl;    
+ //     report<<"#OBS_catch_prop"<<endl;
+ //     report<<OBS_catch_prop_pan<<endl; 
+ //     report<<"#OBS_catch_prop_N_EM"<<endl;
+ //     report<<OBS_catch_prop_N_EM<<endl;
       
 //tagging information
-      report<<"#nyrs_release"<<endl;
-      report<<nyrs_release<<endl;
-      report<<"#years_of_tag_releases "<<endl;
-      report<<yrs_releases<<endl;
-      report<<"#max_life_tags"<<endl;
-      report<<max_life_tags<<endl;
-      report<<"#age_full_selection"<<endl;
-      report<<age_full_selection<<endl;
-      report<<"#input_report_rate_EM"<<endl;
-      report<<input_report_rate_EM<<endl;
-      report<<"#ntags"<<endl;
-      report<<ntags_pan<<endl;
-      report<<"#ntags_total"<<endl;
-      report<<ntags_total<<endl;
-      report<<"#tag_N_EM"<<endl;
-      report<<tag_N_EM<<endl;
-      report<<"#input_T_EM"<<endl;
-      report<<input_T_EM<<endl;
-      report<<"#OBS_tag_prop_pan_final"<<endl;
-      report<<OBS_tag_prop_pan_final<<endl;
+ //     report<<"#nyrs_release"<<endl;
+ //     report<<nyrs_release<<endl;
+ //     report<<"#years_of_tag_releases "<<endl;
+ //     report<<yrs_releases<<endl;
+ //     report<<"#max_life_tags"<<endl;
+ //     report<<max_life_tags<<endl;
+ //     report<<"#age_full_selection"<<endl;
+ //     report<<age_full_selection<<endl;
+ //     report<<"#input_report_rate_EM"<<endl;
+ //     report<<input_report_rate_EM<<endl;
+ //     report<<"#ntags"<<endl;
+ //     report<<ntags_pan<<endl;
+ //     report<<"#ntags_total"<<endl;
+ //     report<<ntags_total<<endl;
+ //     report<<"#tag_N_EM"<<endl;
+ //     report<<tag_N_EM<<endl;
+ //     report<<"#input_T_EM"<<endl;
+ //     report<<input_T_EM<<endl;
+ //    report<<"#OBS_tag_prop_pan_final"<<endl;
+ //     report<<OBS_tag_prop_pan_final<<endl;
      // report<<"#OBS_tag_prop_pan_final_no_age"<<endl;
      // report<<OBS_tag_prop_pan_final_no_age<<endl;
-      }
+   //   }
 
 
  //for fleets-as-areas approach
-      if(sum(nfleets_EM)>1){
+ //     if(sum(nfleets_EM)>1){
       //fleet specific outputs for fishery, panmictic for survey
-      report<<"#OBS_survey_fleet"<<endl;
-      report<<OBS_survey_total_bio<<endl;
-      report<<"#OBS_survey_fleet_bio_se_EM"<<endl;
-      report<<OBS_survey_fleet_bio_se_EM<<endl;
-      report<<"#OBS_survey_prop"<<endl;
-      report<<OBS_survey_prop_pan<<endl;
-      report<<"#OBS_survey_prop_N_EM"<<endl;
-      report<<OBS_survey_prop_N_EM<<endl;
-      report<<"#OBS_yield_fleet"<<endl;
-      report<<OBS_yield_fleet<<endl;
-      report<<"#OBS_yield_fleet_se_EM"<<endl;
-      report<<OBS_yield_fleet_se_EM<<endl;
-      report<<"#OBS_catch_prop"<<endl;
-      report<<OBS_catch_prop<<endl;
-      report<<"#OBS_catch_prop_N_EM"<<endl;
-      report<<OBS_catch_prop_N_EM<<endl;
+ //     report<<"#OBS_survey_fleet"<<endl;
+ //     report<<OBS_survey_total_bio<<endl;
+ //     report<<"#OBS_survey_fleet_bio_se_EM"<<endl;
+ //     report<<OBS_survey_fleet_bio_se_EM<<endl;
+ //     report<<"#OBS_survey_prop"<<endl;
+ //     report<<OBS_survey_prop_pan<<endl;
+ //     report<<"#OBS_survey_prop_N_EM"<<endl;
+ //    report<<OBS_survey_prop_N_EM<<endl;
+ //     report<<"#OBS_yield_fleet"<<endl;
+ //     report<<OBS_yield_fleet<<endl;
+ //     report<<"#OBS_yield_fleet_se_EM"<<endl;
+ //     report<<OBS_yield_fleet_se_EM<<endl;
+ //     report<<"#OBS_catch_prop"<<endl;
+ //     report<<OBS_catch_prop<<endl;
+ //     report<<"#OBS_catch_prop_N_EM"<<endl;
+ //     report<<OBS_catch_prop_N_EM<<endl;
       
 //tagging information
-      report<<"#nyrs_release"<<endl;
-      report<<nyrs_release<<endl;
-      report<<"#years_of_tag_releases "<<endl;
-      report<<yrs_releases<<endl;
-      report<<"#max_life_tags"<<endl;
-      report<<max_life_tags<<endl;
-      report<<"#age_full_selection"<<endl;
-      report<<age_full_selection<<endl;
-      report<<"#input_report_rate_EM"<<endl;
-      report<<input_report_rate_EM<<endl;
-      report<<"#ntags"<<endl;
-      report<<ntags_pan<<endl;
-      report<<"#ntags_total"<<endl;
-      report<<ntags_total<<endl;
-      report<<"#tag_N_EM"<<endl;
-      report<<tag_N_EM<<endl;
-      report<<"#input_T_EM"<<endl;
-      report<<input_T_EM<<endl;
-      report<<"#OBS_tag_prop_pan_final"<<endl;
-      report<<OBS_tag_prop_pan_final<<endl;
+ //     report<<"#nyrs_release"<<endl;
+ //     report<<nyrs_release<<endl;
+ //     report<<"#years_of_tag_releases "<<endl;
+ //     report<<yrs_releases<<endl;
+ //     report<<"#max_life_tags"<<endl;
+ //     report<<max_life_tags<<endl;
+ //     report<<"#age_full_selection"<<endl;
+ //     report<<age_full_selection<<endl;
+ //     report<<"#input_report_rate_EM"<<endl;
+ //     report<<input_report_rate_EM<<endl;
+ //     report<<"#ntags"<<endl;
+ //     report<<ntags_pan<<endl;
+ //     report<<"#ntags_total"<<endl;
+ //     report<<ntags_total<<endl;
+ //     report<<"#tag_N_EM"<<endl;
+ //     report<<tag_N_EM<<endl;
+ //     report<<"#input_T_EM"<<endl;
+ //     report<<input_T_EM<<endl;
+ //     report<<"#OBS_tag_prop_pan_final"<<endl;
+ //     report<<OBS_tag_prop_pan_final<<endl;
      // report<<"#OBS_tag_prop_pan_final_no_age"<<endl;
      // report<<OBS_tag_prop_pan_final_no_age<<endl;
-      }
-      }
+ //     }
+ //     }
 
 //spatial to spatial EM inputs or panmictic matching - no aggregation needed
      if((EM_structure>0 && OM_structure>0) || (EM_structure==0 && OM_structure==0)){
