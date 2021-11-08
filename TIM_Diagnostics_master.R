@@ -16,6 +16,9 @@ library(dplyr)
 library(matrixStats)
 library(grid)
 library(gridExtra)
+library(PBSadmb)
+library(gtable)
+library(corrplot)
 
 ######################################################################
 ########### PLOT SETTINGS ############################################
