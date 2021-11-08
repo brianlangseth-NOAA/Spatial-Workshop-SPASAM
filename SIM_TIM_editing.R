@@ -9,6 +9,7 @@
 library(parallel)
 library(doSNOW)
 library(PBSmodelling)
+library(ggforce)
 
 ###################################
 #Setting up the simulations
@@ -304,8 +305,6 @@ write.csv(file="Sim_Stats.csv",Sim.Stats)
 ##############################################################
 ##############################################################
 
-#TO DO: Test once have converged runs
-
 # run the value grab
 {
   
@@ -545,8 +544,6 @@ saveRDS(vg, file="Sim_data.RData")
 # Load Sim results for plotting
 #################################################################################
 
-#TO DO: Test once have converged runs
-
 #reload directory information for plotting
  
 #start here if you have already completed the SIMS and saved the data
@@ -779,15 +776,15 @@ ggplot(Sim_Stats, aes(x=Sim_Stats[j])) +
 ######################################
 
 #R_ave
-q_est<-data.frame(melt(t(q_df_est)))
-q_est<-cbind(q_est,data.frame(melt(t(q_df_sim))[3]))
+q_est<-data.frame(reshape2::melt(t(q_df_est)))
+q_est<-cbind(q_est,data.frame(reshape2::melt(t(q_df_sim))[3]))
 names(q_est)<-c("Nsim","Reg","q_est","q_sim")
 q_est$q_bias<-((q_est$q_est-q_est$q_sim)/q_est$q_sim)*100
 
 #calc medians
 
 #calculate the sum across areas 
-q.long<-melt(q_est, id=c("Reg","Nsim"))
+q.long<-reshape2::melt(q_est, id=c("Reg","Nsim"))
 q.long$Reg<-as.character(q.long$Reg)
 
 median_q<-data.frame(q.long%>% group_by(Reg,variable) %>% summarise(med=median(value),min=min(value),max=max(value)))
@@ -824,15 +821,15 @@ write.csv(median_q,"q_medians.csv")
 
 
 #R_ave
-Rave_est<-data.frame(melt(t(R_ave_df_est)))
-Rave_est<-cbind(Rave_est,data.frame(melt(t(R_ave_df_sim))[3]))
+Rave_est<-data.frame(reshape2::melt(t(R_ave_df_est)))
+Rave_est<-cbind(Rave_est,data.frame(reshape2::melt(t(R_ave_df_sim))[3]))
 names(Rave_est)<-c("Nsim","Reg","R_ave_est","R_ave_sim")
 Rave_est$R_ave_bias<-((Rave_est$R_ave_est-Rave_est$R_ave_sim)/Rave_est$R_ave_sim)*100
 
 #calc medians
 
 #calculate the sum across areas 
-rave.long<-melt(Rave_est, id=c("Reg","Nsim"))
+rave.long<-reshape2::melt(Rave_est, id=c("Reg","Nsim"))
 rave.long$Reg<-as.character(rave.long$Reg)
 
 median_R_ave<-data.frame(rave.long%>% group_by(Reg,variable) %>% summarise(med=median(value),min=min(value),max=max(value)))
@@ -872,18 +869,18 @@ write.csv(median_R_ave,"Rave_medians.csv")
 #R_apport
 R_apport_est<-data.frame(Year=rep(2:nyrs,nreg),Reg=rep(1:nreg,each=nyrs-1))
 R_apport_est<-cbind(R_apport_est,data.frame(R_apport_df_est))
-R_apport_est_melt<-melt(R_apport_est,id=c("Year","Reg"))
+R_apport_est_melt<-reshape2::melt(R_apport_est,id=c("Year","Reg"))
 
 R_apport_sim<-data.frame(Year=rep(2:nyrs,nreg),Reg=rep(1:nreg,each=nyrs-1))
 R_apport_sim<-cbind(R_apport_sim,data.frame(R_apport_df_sim))
-R_apport_sim_melt<-melt(R_apport_sim,id=c("Year","Reg"))
+R_apport_sim_melt<-reshape2::melt(R_apport_sim,id=c("Year","Reg"))
 
 names(R_apport_est_melt)<-c("Year","Reg","Nsim","R_apport_est")
 R_apport_est_melt$R_apport_sim<-R_apport_sim_melt[,4]
 R_apport_est_melt$R_apport_bias<-((R_apport_est_melt$R_apport_est-R_apport_est_melt$R_apport_sim)/R_apport_est_melt$R_apport_sim)*100
 
 
-r.apport.long<-melt(R_apport_est_melt, id=c("Year","Reg","Nsim"))
+r.apport.long<-reshape2::melt(R_apport_est_melt, id=c("Year","Reg","Nsim"))
 r.apport.long$Reg<-as.character(r.apport.long$Reg)
 
 median_R_apport<-data.frame(r.apport.long%>% group_by(Reg,variable) %>% summarise(med=median(value),min=min(value),max=max(value)))
@@ -922,7 +919,7 @@ write.csv(median_R_apport,"R_apport_medians.csv")
 rec.data<-data.frame(Dat=c(rep("SIM",nrow(rec_df_sim)),rep("EST",nrow(rec_df_est))),Years=rep(years,nreg*2),Reg=rep(1:nreg,each=nyrs))
 
 rec.data<-cbind(rec.data,rbind(rec_df_sim,rec_df_est))
-rec.long<-melt(rec.data, id=c("Dat","Years","Reg"))
+rec.long<-reshape2::melt(rec.data, id=c("Dat","Years","Reg"))
 rec.long$Reg<-as.factor(as.character(rec.data$Reg))
 
 #calculate the sum across areas 
@@ -998,7 +995,7 @@ rec.dev.data<-cbind(rec.dev.data,rec_devs_df_est)
 rec.dev.data<-rbind(rec.dev.data,rec.dev.sim.temp)
 
 
-rec.dev.long<-melt(rec.dev.data, id=c("Dat","Years","Reg"))
+rec.dev.long<-reshape2::melt(rec.dev.data, id=c("Dat","Years","Reg"))
 rec.dev.long$Reg<-as.character(rec.dev.data$Reg)
 
 #calculate the sum across areas 
@@ -1069,7 +1066,7 @@ write.csv(rec.dev.est.med,"Rec_Dev_Bias.csv")
 init.abund.data<-data.frame(Dat=c(rep("SIM",nrow(init_abund_df_est)),rep("EST",nrow(init_abund_df_est))),Age=rep(1:na,(nreg*nreg)*2),Reg=rep(1:nreg,each=na*nreg))
 
 init.abund.data<-cbind(init.abund.data,rbind(init_abund_df_sim,init_abund_df_est))
-init.abund.melt<-melt(init.abund.data, id=c("Dat","Age","Reg"))
+init.abund.melt<-reshape2::melt(init.abund.data, id=c("Dat","Age","Reg"))
 
 
 #sum across region
@@ -1132,7 +1129,7 @@ write.csv(init.abund.meds,"Initial_abund_medians.csv")
 ssb.data<-data.frame(Dat=c(rep("SIM",nrow(ssb_df_sim)),rep("EST",nrow(ssb_df_est))),Years=rep(years,nreg*2),Reg=rep(1:nreg,each=nyrs))
 
 ssb.data<-cbind(ssb.data,rbind(ssb_df_sim,ssb_df_est))
-ssb.long<-melt(ssb.data, id=c("Dat","Years","Reg"))
+ssb.long<-reshape2::melt(ssb.data, id=c("Dat","Years","Reg"))
 ssb.long$Reg<-as.character(ssb.data$Reg)
 
 #calculate the sum across areas 
@@ -1201,7 +1198,7 @@ write.csv(ssb.est.med,"SSB_Bias.csv")
 bio.data<-data.frame(Dat=c(rep("SIM",nrow(bio_df_sim)),rep("EST",nrow(bio_df_est))),Years=rep(years,nreg*2),Reg=rep(1:nreg,each=nyrs))
 
 bio.data<-cbind(bio.data,rbind(bio_df_sim,bio_df_est))
-bio.long<-melt(bio.data, id=c("Dat","Years","Reg"))
+bio.long<-reshape2::melt(bio.data, id=c("Dat","Years","Reg"))
 bio.long$Reg<-as.character(bio.data$Reg)
 
 #calculate the sum across areas 
@@ -1273,7 +1270,7 @@ fmax.data.est<-data.frame(Dat=rep("EST",nrow(fmax_df_est)),Years=rep(years,nreg)
 fmax.data<-rbind(fmax.data.sim,fmax.data.est)
 
 fmax.data<-cbind(fmax.data,rbind(fmax_df_sim,fmax_df_est))
-fmax.long<-melt(fmax.data, id=c("Dat","Years","Reg"))
+fmax.long<-reshape2::melt(fmax.data, id=c("Dat","Years","Reg"))
 fmax.long$Reg<-as.character(fmax.data$Reg)
 
 #calculate the sum across areas 
@@ -1342,7 +1339,7 @@ write.csv(fmax.est.med,"Fmax_Bias.csv")
 f.select.data<-data.frame(Dat=c(rep("SIM",nrow(select_age_df_sim)),rep("EST",nrow(select_age_df_est))),Age=rep(ages,nreg*2),Reg=rep(1:nreg,each=na))
 
 f.select.data<-cbind(f.select.data,rbind(select_age_df_sim,select_age_df_est))
-f.select.long<-melt(f.select.data, id=c("Dat","Age","Reg"))
+f.select.long<-reshape2::melt(f.select.data, id=c("Dat","Age","Reg"))
 f.select.long$Reg<-as.character(f.select.long$Reg)
 
 
@@ -1404,7 +1401,7 @@ write.csv(f.select.est,"F_select_age_bias.csv")
 s.select.data<-data.frame(Dat=c(rep("SIM",nrow(select_age_survey_df_sim)),rep("EST",nrow(select_age_survey_df_est))),Age=rep(ages,nreg*2),Reg=rep(1:nreg,each=na))
 
 s.select.data<-cbind(s.select.data,rbind(select_age_survey_df_sim,select_age_survey_df_est))
-s.select.long<-melt(s.select.data, id=c("Dat","Age","Reg"))
+s.select.long<-reshape2::melt(s.select.data, id=c("Dat","Age","Reg"))
 s.select.long$Reg<-as.character(s.select.long$Reg)
 
 
@@ -1473,7 +1470,7 @@ movement.data.est<-data.frame(Dat=rep("EST",nrow(move_df_est)),Year=rep(1:nyrs,e
 movement.data<-rbind(movement.data.sim,movement.data.est)
 movement.data<-cbind(movement.data,rbind(move_df_sim,move_df_est))
 
-move.long<-melt(movement.data, id=c("Dat","Year","Reg_from","Reg_to","Age"))
+move.long<-reshape2::melt(movement.data, id=c("Dat","Year","Reg_from","Reg_to","Age"))
 move.long$Reg_from<-as.character(move.long$Reg_from)
 move.long$Reg_to<-as.character(move.long$Reg_to)
 move.long$Age<-as.character(move.long$Age)
@@ -1533,10 +1530,10 @@ move.bias.gg.alt<-ggplot(move.est, aes(x=as.factor(Year), y=bias, col=Reg_to), g
 
 write.csv(move.est.med,"Move_Bias.csv")
 
-ssb.table<-spread(ssb.long, key = variable, value = value)
-rec.table<-spread(rec.long, key = variable, value = value)
-fmax.table<-spread(fmax.long, key = variable, value = value)
-move.table<-spread(move.long, key = variable, value = value)
+ssb.table<-tidyr::spread(ssb.long, key = variable, value = value)
+rec.table<-tidyr::spread(rec.long, key = variable, value = value)
+fmax.table<-tidyr::spread(fmax.long, key = variable, value = value)
+move.table<-tidyr::spread(move.long, key = variable, value = value)
 
 write.csv(ssb.table,"ssb_table.csv")
 write.csv(rec.table,"rec_table.csv")
