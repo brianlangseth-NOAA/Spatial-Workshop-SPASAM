@@ -186,6 +186,7 @@ nreg_OM<-out$nregions_OM
 nreg<-out$nregions
 years<-seq(1:out$nyrs)
 ages<-seq(1:out$nages)
+fleets<-out$nfleets
 tag.age.switch<-out$fit_tag_age_switch
 
 #for running the meta pop example. Might need fixing if more complex
@@ -1095,10 +1096,13 @@ T.resid.plot<-ggplot(T.year.resid,aes(Year,value))+
 # Yield
 
 #need to fix this for fleets as areas 
-Y.year<-data.frame(Year=rep(years,nreg), Reg=rep(c(1:nreg),each=nyrs), Estimated=out$yield_fleet,Observed=out$OBS_yield_fleet ) 
-
+Y.year<-data.frame(Year=rep(years,nreg), Reg=rep(c(1:nreg),each=nyrs),Estimated=out$yield_fleet,Observed=out$OBS_yield_fleet ) 
 
 Y.year.plot<-melt(Y.year, id=c("Reg","Year"))
+Fleet.a=rep(c(1:fleets),each=nyrs)
+Fleet=rep(Fleet.a,times=nreg)
+Y.year.plot$Fleet=Fleet
+Y.year.plot$variable=gsub(paste0(".",'[0-9]'),'',Y.year.plot$variable)
 
 yield.p<-ggplot(Y.year.plot,aes(Year,value,shape=variable))+
   geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
@@ -1119,11 +1123,15 @@ yield.p<-ggplot(Y.year.plot,aes(Year,value,shape=variable))+
 #  Y.year$resid<-(Y.year$Observed-Y.year$Estimated)}
 
 #if(resid.switch==2){
-Y.year$resid<-((Y.year$Estimated-Y.year$Observed)/Y.year$Observed)*100
+#Y.year$resid<-((Y.year$Estimated-Y.year$Observed)/Y.year$Observed)*100 #JJD
+Y.year[,paste0("resid.",seq(1:fleets))]=((Y.year[,paste0("Estimated.",seq(1:fleets))]-Y.year[,paste0("Observed.",seq(1:fleets))])/Y.year[,paste0("Observed.",seq(1:fleets))])*100
+
 #}
 
-y.resid.p<-melt(Y.year[,c(1,2,5)],id=c("Reg","Year"))
-
+#y.resid.p<-melt(Y.year[,c(1,2,5)],id=c("Reg","Year")) #JJD
+y.resid.p<-melt(Y.year[,c(1,2,(ncol(Y.year)-(fleets-1)):ncol(Y.year))], id=c("Reg","Year"))
+#y.resid.p$Fleet=Fleet #Fleet defined above for Y.year.plot
+#y.resid.p$variable=gsub(paste0(".",'[0-9]'),'',y.resid.p$variable)
 
 #
 Y.resid.plot<-ggplot(y.resid.p,aes(Year,value))+
@@ -1494,8 +1502,8 @@ if(OM_dat[grep("select_switch_survey_EM$",OM_dat, fixed = F)+7]==0)
 
 if(OM_dat[grep("select_switch_EM$",OM_dat, fixed = F)+7]==1)
 {
-  EM_est_table[3,2:ncol(EM_est_table)]<-round(out$sel_beta1,2)
-  EM_est_table[4,2:ncol(EM_est_table)]<-round(out$sel_beta2,2)
+  EM_est_table[3,2:ncol(EM_est_table)]<-apply(data.frame(round(out$sel_beta1,2)),2,paste,collapse=",")
+  EM_est_table[4,2:ncol(EM_est_table)]<-apply(data.frame(round(out$sel_beta2,2)),2,paste,collapse=",")
   EM_est_table[5,2:ncol(EM_est_table)]<-NA
   EM_est_table[6,2:ncol(EM_est_table)]<-NA
 }
@@ -1567,8 +1575,8 @@ if(OM_dat[grep("select_switch_survey_EM$",OM_dat, fixed = F)+7]==0)
 
 if(OM_dat[grep("select_switch_EM$",OM_dat, fixed = F)+7]==1)
 {
-  OM_true_table[3,2:ncol(OM_true_table)]<-round(out$sel_beta1_TRUE,2)
-  OM_true_table[4,2:ncol(OM_true_table)]<-round(out$sel_beta2_TRUE,2)
+  OM_true_table[3,2:ncol(OM_true_table)]<-apply(data.frame(round(out$sel_beta1_TRUE,2)),2,paste,collapse=",")
+  OM_true_table[4,2:ncol(OM_true_table)]<-apply(data.frame(round(out$sel_beta2_TRUE,2)),2,paste,collapse=",")
   OM_true_table[5,2:ncol(OM_true_table)]<-NA
   OM_true_table[6,2:ncol(OM_true_table)]<-NA
 }

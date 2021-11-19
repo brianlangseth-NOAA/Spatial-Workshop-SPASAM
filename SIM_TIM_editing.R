@@ -24,8 +24,8 @@ diag.run<-1
 
 
 #2) Set number of simulations to perform
-nsim <-500
-nsim <- 2 #for testing purposes
+nsim <-2
+
 
 ######################
 #plot parameters
@@ -44,7 +44,7 @@ median.col<-"grey95"
 
 # To run this simulation a folder for each scenario will need to be placed in the master directory. Each folder will need separate folders named 'Operating_Model' and 'EM_model' with the exe files and .DAT for the OM only. The Code will do the rest. Be sure that the TIM_diagnostics.R code is also in the master directory if diag_switch==1 
 #
-wd<-"C:/Users/Brian.Langseth/Desktop/SILC test"
+wd<-"C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Panmictic"
 
 #5) set master file with holding the runs 
 direct_master<-wd  #"F:\\NOAA FILES\\Research\\SPASAM\\CAPAM Runs\\simple example"
@@ -71,7 +71,7 @@ setwd(direct_master)
 ##############################################################
 #OM Location
 OM_direct<-paste0(direct_master,"\\Operating_Model",sep="")
-OM_name<-"TIM_OM" #name of the OM you are wanting to run
+OM_name<-"PAN_YFT" #name of the OM you are wanting to run
 
 #EM Location
 EM_direct<-paste0(direct_master,"\\Estimation_Model",sep="") #location of run(s)
@@ -342,6 +342,7 @@ npops<-out$npops
 nreg<-out$nregions
 years<-seq(1:out$nyrs)
 ages<-seq(1:out$nages)
+fleets<-out$nfleets
 
 #for metapop
 if(npops>1){
@@ -607,14 +608,14 @@ q_df_est<-matrix(NA,nreg,nconv)
 
 
 #selectivity params
-sel_beta1_df_sim<-matrix(NA,nreg,nconv)
-sel_beta2_df_sim<-matrix(NA,nreg,nconv)
-sel_beta3_df_sim<-matrix(NA,nreg,nconv)
-sel_beta4_df_sim<-matrix(NA,nreg,nconv)
-sel_beta1_df_est<-matrix(NA,nreg,nconv)
-sel_beta2_df_est<-matrix(NA,nreg,nconv)
-sel_beta3_df_est<-matrix(NA,nreg,nconv)
-sel_beta4_df_est<-matrix(NA,nreg,nconv)
+sel_beta1_df_sim<-matrix(NA,nreg*fleets,nconv) #JJD
+sel_beta2_df_sim<-matrix(NA,nreg*fleets,nconv) #JJD
+sel_beta3_df_sim<-matrix(NA,nreg*fleets,nconv)
+sel_beta4_df_sim<-matrix(NA,nreg*fleets,nconv)
+sel_beta1_df_est<-matrix(NA,nreg*fleets,nconv)
+sel_beta2_df_est<-matrix(NA,nreg*fleets,nconv)
+sel_beta3_df_est<-matrix(NA,nreg*fleets,nconv)
+sel_beta4_df_est<-matrix(NA,nreg*fleets,nconv)
 
 
 sel_beta1_surv_df_sim<-matrix(NA,nreg,nconv)
@@ -648,8 +649,8 @@ bio_df_sim<-matrix(NA,nyrs*nreg,nconv)
 bio_df_est<-matrix(NA,nyrs*nreg,nconv)
 
 #yield
-catch_df_sim<-matrix(NA,nyrs*nreg,nconv)
-catch_df_est<-matrix(NA,nyrs*nreg,nconv)
+catch_df_sim<-matrix(NA,nyrs*nreg*fleets,nconv) #JJD
+catch_df_est<-matrix(NA,nyrs*nreg*fleets,nconv)
 
 #survey bio
 survey_df_sim<-matrix(NA,nyrs*nreg,nconv)
@@ -660,8 +661,8 @@ fmax_df_sim<-matrix(NA,nyrs*nreg,nconv)
 fmax_df_est<-matrix(NA,nyrs*nreg,nconv)
 
 #select at age
-select_age_df_sim<-matrix(NA,na*nreg,nconv)
-select_age_df_est<-matrix(NA,na*nreg,nconv)
+select_age_df_sim<-matrix(NA,na*nreg*fleets,nconv) #JJD
+select_age_df_est<-matrix(NA,na*nreg*fleets,nconv)
 select_age_survey_df_sim<-matrix(NA,na*nreg,nconv)
 select_age_survey_df_est<-matrix(NA,na*nreg,nconv)
 
