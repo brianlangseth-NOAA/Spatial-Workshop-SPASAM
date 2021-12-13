@@ -1294,7 +1294,7 @@
   # distribution of all natal populations across populations and regions in first year, used with init_abund_switch==0
   # NOTE: first population index is natal population, second population index is all populations over which it is distributed
   # NOTE: if OM_structure!=3, then model just tracks current population (not natal population), so abundance is summed across all natal pops in current pop; just put abundance in the 'natal' pop and leave other pops/regions as 0 abundance
-97251	58985	35776	21700	13161	7983	4842	2937	1781	1080	655	397	241	146	89	54	33	20	12	7	4	3	2	1	1	0	0	0
+97251	72045	53372	39539	29291	21700	16075	11909	8822	6536	4842	3587	2657	1969	1458	1080	800	593	439	325	241	179	132	98	73	54	40	30
 
 
 #############################################################################################################################################
@@ -2256,7 +2256,7 @@
 #init_abund_EM (1,np_em,1,np_em,1,nreg_em,1,na)
   # initial abundance for EM for each natal population across all population and regions by age
   # NOTE: used with init_abund_switch_EM==(-2)
-97251	58985	35776	21700	13161	7983	4842	2937	1781	1080	655	397	241	146	89	54	33	20	12	7	4	3	2	1	1	0	0	0
+97251	72045	53372	39539	29291	21700	16075	11909	8822	6536	4842	3587	2657	1969	1458	1080	800	593	439	325	241	179	132	98	73	54	40	30
 
 
 
