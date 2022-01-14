@@ -69,7 +69,7 @@ Latage=c(22,
 )
 
 #length bins for which I want a probability
-lengths=seq(9,201,by=1)
+lengths=seq(9.5,201.5,by=1)
 
 #function to calculate probability in a given length interval
 getprob=function(L1=NULL,L2=NULL,meanL=NULL,sd=NULL){
@@ -78,7 +78,7 @@ return(prob)
 }
 
 #matrix to hold alk
-alk=matrix(NA,nrow=length(Latage),ncol=(length(lengths)-2),dimnames = list(seq(1:length(Latage)),lengths[2:(length(lengths)-1)]))
+alk=matrix(NA,nrow=length(Latage),ncol=(length(lengths)-2),dimnames = list(seq(1:length(Latage)),(lengths[2:(length(lengths)-1)]-0.5)))
 #loop over 28 ages and the length bins and calculate probility for each bin
 for(a in 1:length(Latage)){
   for(l in 1:(length(lengths)-2)){
