@@ -22,6 +22,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
 #One area - can adjust for other datasets
 load(file.path(data_loc,'YFT_SRD_1A_4_v2.Rdata'))
 dat <- dat_1A_4
+bdat <- biol_dat 
 
 
 ####
@@ -123,7 +124,7 @@ rlnorm(100,log(biol_dat$L[2]),sqrt(log(1+cv_l^2)))
 #Sample size of comps - #OBS_catch_prop_N_EM
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nfleet) #Set up for all years and fleets
-tmp_val[dat$lencomp$Yr, dat$lencomp$FltSvy] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
+tmp_val[cbind(dat$lencomp$Yr, dat$lencomp$FltSvy)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
@@ -135,26 +136,28 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #Survey index - #OBS_survey_fleet_bio
 loc <- grep("#OBS_survey_fleet_bio$", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[as.numeric(levels(dat$CPUE$year)),dat$Nsurveys] <- dat$CPUE$cpu #Assign for just the years and surveys in YFT data
+tmp_val[cbind(as.numeric(levels(dat$CPUE$year)),dat$Nsurveys)] <- dat$CPUE$cpu #Assign for just the years and surveys in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
 #Survey index SE - #OBS_survey_fleet_bio_se_EM
 loc <- grep("#OBS_survey_fleet_bio_se_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[as.numeric(levels(dat$CPUE$year)),dat$Nsurveys] <- dat$CPUE$cv #Assign for just the years and surveys in YFT data
+tmp_val[cbind(as.numeric(levels(dat$CPUE$year)),dat$Nsurveys)] <- dat$CPUE$cv #Assign for just the years and surveys in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #DECISION - not using precise se (not using CV to SE conversion)
 
-#Survey Comps - #OBS_catch_prop
+#Survey Comps - #OBS_survey_prop set to #OBS_catch_prop for fleet 7
 #DECISION - Believe these to be the same as the fleet comps. Can set survey select to that of catch
+#NEED TO DO
 
 #Sample size of comps - #OBS_survey_prop_N_EM
 #DECISION - Believe these to be the same as the fleet comps. Can set survey select to that of catch. Right now copying from catch
+#DECISION - What is NCPUEObs though?
 loc <- grep("#OBS_survey_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurvey) #Set up for all years and surveys
-tmp_val[dat$lencomp[dat$lencomp$FltSvy==3,]$Yr, dat$Nsurvey] <- dat$lencomp[dat$lencomp$FltSvy==3,]$Nsamp #Assign for just the years and fleets in YFT data
+tmp_val[cbind(dat$lencomp[dat$lencomp$FltSvy==3,]$Yr, dat$Nsurvey)] <- dat$lencomp[dat$lencomp$FltSvy==3,]$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
@@ -172,9 +175,13 @@ loc <- grep("#years_of_tag_releases", om_rep)
 tmp_val <- unique(dat$tag_releases$yr)
 om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
-#DECISION - need to define lifespan for tags (assume it equals to max_periods)
+#Lifespan of tags
+#DECISION - assume it equals to maximum difference in year recapture from year released within data
+#Originally had as max_periods but not sure this works
+full_recap_info <- merge(dat$tag_releases, dat$tag_recaps, by = "tg") #combine tag release and recapture information by tag (tg)
+full_recap_info$nt <- full_recap_info$yr.y - full_recap_info$yr.x + 1
 loc <- grep("#max_life_tags", om_rep)
-om_rep[(loc + 1)] <- dat$max_periods
+om_rep[(loc + 1)] <- max(full_recap_info$nt-1)
 
 #DECISION - age of full selection (kept currently at 8)
 
@@ -184,12 +191,11 @@ om_rep[(loc + 1)] <- 1
 
 #Tags released - #ntags
 #YFT data already adjusts for initial tagging mortality
-#Entry numbers dont align so adding check
 loc <- grep("#ntags$", om_rep)
 tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and surveys
-tmp_val[as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age] <- dat$tag_releases$nrel #Assign for just the years and fleets in YFT data
+tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- dat$tag_releases$nrel #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-#Check that number of entries dont match up. Append new lines before replacing
+#Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
 om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
@@ -203,19 +209,83 @@ om_rep[(loc + 1)] <- new_val
 
 #Tag sample size - #tag_N_EM
 #DECISION NEED TO DECIDE WHAT TO USE - SET ARBITRARILY TO 200
-#Entry numbers dont align so adding check
 loc <- grep("#tag_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and ages
-tmp_val[as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age] <- 200 #Assign for just the years and ages in YFT data
+tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- 200 #Assign for just the years and ages in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-#Check that number of entries dont match up. Append new lines before replacing
+#Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
 om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Tag recaptures - #OBS_tag_prop_final
-#Dont know how to enter recaptures (i.e. unsure of format within TIM)
+#DECISION - entering age as the age originally tagged
+#DECISION - entering prop as number of recaps
+#DECISION - entered as ages (28) for each release event (10)
+#DECISION - lifespan of tags decision is used here. If adjust, adjust here too
+loc <- grep("#OBS_tag_prop_final$", om_rep)
+#Set up dimensions for nt (number of years 
+xy = nt = NULL
+for(i in 1:length(unique(dat$tag_releases$yr))){ #Script from TM.tpl to set dimensions
+  xx <- unique(dat$tag_releases$yr)[i]
+  xy[i] <- min(max(full_recap_info$nt-1),dat$endyr-xx+1)
+  nt[i] <- xy[i]*dat$N_areas+1
+}
+tmp_val <- array(0, dim = c(dat$Nages, max(nt), length(unique(dat$tag_releases$yr)))) #Set up for all ages, recapture years, and initial tag events
+tmp_val[cbind(full_recap_info$age, full_recap_info$nt, as.numeric(factor(full_recap_info$tfill)))] <- full_recap_info$recaps #Assign for just the years and ages in YFT data
+new_val <- apply(tmp_val, c(1,3), FUN = paste, collapse = " ")
+new_val <- c(new_val)
+#Check if number of entries dont match up. Append new lines before replacing
+entries <- grep("#", om_rep)
+add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
+om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+om_rep[(loc + 1):(loc + length(new_val))] <- new_val
+
+
+##
+#Selectivity
+##
+
+
+
+##
+#Biological data
+##
+#Steepness - #steep
+loc <- grep("#steep$", om_rep)
+om_rep[(loc + 1)] <- 0.8
+
+#R average - #R_ave
+loc <- grep("#R_ave", om_rep)
+om_rep[(loc + 1)] <- bdat$B0/1000 #from OM description this IS R0
+
+#Variance in recruitment - #sigma_recruit_EM
+#DECISION - sigma r of 0.6
+loc <- grep("#sigma_recruit", om_rep)
+om_rep[(loc + 1)] <- 0.6 
+
+#Weight at age
+
+#Length at age
+
+#Maturity at age - #maturity
+loc <- grep("#maturity$", om_rep)
+tmp_val <- bdat$Maturity
+om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
+
+
+#Fecundity
+
+#Mortality at age - #input_M_EM
+#DECISION - Im also doing this for input_M_TRUE
+loc <- grep("#input_M", om_rep) #This reads for BOTH input_M_EM and input_M_TRUE
+tmp_val <- bdat$M
+om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
+
+
+
+
 
 
 
