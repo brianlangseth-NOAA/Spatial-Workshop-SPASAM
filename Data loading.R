@@ -35,7 +35,6 @@ bdat <- biol_dat
 #BEST TO START FRESH AND FULLY AUTOMATE FILE GENERATION BUT NOT THERE AT THE MOMENT
 om_rep <- readLines(file.path(master_loc,"TIM_OM.rep"),n=-1)
 
-
 #Set up folder for new model run
 mod_name <- "YFT_1area"
 
@@ -75,8 +74,6 @@ check_entry = function(loc, loc_end, new_entry){
 #Data Munging!!!!
 #####################################################
 
-
-
 ####
 #Catches
 ####
@@ -104,7 +101,46 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #For TIM, the comp data is of age comps by year
 #For YFT data, the comp data is of length comps by year
 
-#Convert lengths to ages
+#Create age-length key - taken from Jon's ALK.R and modified
+#DECISION - dat$lbin_vector final bin is 198, whereas dat$lencomp final bin is 200. There
+#isn't any catches in this last bin so ignoring for now
+#DECISION - set end of final lbin to be 205 cm (as opposed to ongoing)
+#DECISION - assume lognormal error for distribution of lengths around an age
+#DECISION - round probability to 2 sig digits (which truncates the possible ages with probability)
+#DECISION - not using precise se (not using CV to SE conversion)
+lengths=seq(10,205,by=5) 
+#Function to calculate probability in a given length interval
+getprob=function(L1=NULL,L2=NULL,meanL=NULL,sd=NULL){
+  #prob=pnorm(L2,mean=meanL,sd=sd)-pnorm(L1,mean=meanL,sd=sd)
+  prob=plnorm(L2,meanlog=meanL,sdlog=sd)-plnorm(L1,meanlog=meanL,sdlog=sd)
+  return(prob)
+}
+#matrix to hold alk
+alk=matrix(NA,nrow=length(Latage),ncol=(length(lengths)-1),dimnames = list(paste0("a",seq(1:length(Latage))),paste0("l",(lengths[1:(length(lengths)-1)]))))
+#loop over 28 ages and the length bins and calculate probility for each bin
+for(a in 1:length(Latage)){
+  for(l in 1:(length(lengths)-1)){
+    alk[a,l]=getprob(L1=lengths[l],L2=lengths[l+1],meanL=log(Latage[a]),sd=0.1)
+  }
+}
+alk=round(alk,digits=2)
+noentry = which(colSums(alk)==0) #determine which lengths dont have any entries
+alk[1,noentry[1]]=1 #set the first column to be 1 for the first age 1
+alk[dat$Nages,noentry[-1]]=1 #set the last columns to be 1 for the last age
+#divided by column sums to produce P(A|L); i.e. column sums among ages = 1
+alk=t(t(alk)/colSums(alk))
+
+#Convert length comps to age comps
+agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
+##########CONTINUE HERE
+
+
+
+#DECISION - assume OBS_catch_prop is of blocked by year first for each fleet
+
+
+
+
 
 
 ##TO DO Need to complete - cannot wrap head around how to do this--------  
@@ -150,7 +186,7 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
 #Survey Comps - #OBS_survey_prop set to #OBS_catch_prop for fleet 7
 #DECISION - Believe these to be the same as the fleet comps. Can set survey select to that of catch
-#NEED TO DO
+#TO DO
 
 #Sample size of comps - #OBS_survey_prop_N_EM
 #DECISION - Believe these to be the same as the fleet comps. Can set survey select to that of catch. Right now copying from catch
@@ -160,6 +196,18 @@ tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurvey) #Set up for all years
 tmp_val[cbind(dat$lencomp[dat$lencomp$FltSvy==3,]$Yr, dat$Nsurvey)] <- dat$lencomp[dat$lencomp$FltSvy==3,]$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+
+
+####
+#Rec index
+####
+
+#Rec index - #OBS_rec_index_BM
+#DECISION - set to zero
+loc <- grep("#OBS_rec_index_BM", om_rep)
+tmp_val <- rep(0, dat$endyr)
+new_val <- paste(tmp_val, collapse = " ")
+om_rep[(loc + 1)] <- new_val
 
 
 ####
@@ -177,23 +225,39 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 #Lifespan of tags
 #DECISION - assume it equals to maximum difference in year recapture from year released within data
-#Originally had as max_periods but not sure this works
+#Originally had as max_periods but that is SS-speak and is the periods after which tags go into the accumulator
+#age. See issue #6: https://github.com/aaronmberger-nwfsc/Spatial-Assessment-Modeling-Workshop/issues/6
 full_recap_info <- merge(dat$tag_releases, dat$tag_recaps, by = "tg") #combine tag release and recapture information by tag (tg)
-full_recap_info$nt <- full_recap_info$yr.y - full_recap_info$yr.x + 1
+full_recap_info$yr_diff <- full_recap_info$yr.y - full_recap_info$yr.x
 loc <- grep("#max_life_tags", om_rep)
-om_rep[(loc + 1)] <- max(full_recap_info$nt-1)
+om_rep[(loc + 1)] <- max(full_recap_info$yr_diff)
 
 #DECISION - age of full selection (kept currently at 8)
 
-#DECISION - tag report rate (assume to be 1)
+#Tag report rate - #...report_rate...
+#DECISION - fix at true value from OM (but reset EM to be the same)
+#but dont have likelihood penalty (wt_B_pen = 0) so dont need report_rate_ave or report_rate_sigma
+#Use based on analyst guidance document (https://aaronmberger-nwfsc.github.io/Spatial-Assessment-Modeling-Workshop/articles/Analyst_guidance.html)
+loc <- grep("#report_rate_switch", om_rep)
+om_rep[(loc + 1)] <- 0 #stay at 0
 loc <- grep("#input_report_rate_EM", om_rep)
-om_rep[(loc + 1)] <- 1
+om_rep[(loc + 1)] <- 0.9
+loc <- grep("#report_rate_TRUE", om_rep)
+new_val <- rep(0.9, length(unique(dat$tag_releases$yr)))
+#Check if number of entries dont match up. Append new lines before replacing
+entries <- grep("#", om_rep)
+add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
+om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+om_rep[(loc + 1):(loc + length(new_val))] <- new_val
+#DECISION - there is no tag retention or tag loss in the TIM yet. It is in YFT
+
 
 #Tags released - #ntags
 #YFT data already adjusts for initial tagging mortality
 loc <- grep("#ntags$", om_rep)
 tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and surveys
 tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- dat$tag_releases$nrel #Assign for just the years and fleets in YFT data
+tags_yr_age <- tmp_val #save for later
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
@@ -202,13 +266,14 @@ om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Total tags - #ntags_total
-#DECISION set equal to number of tags (ntags) rounded up
+#DECISION - set equal to number of tags (ntags)
 loc <- grep("#ntags_total", om_rep)
-new_val <- paste(ceiling(rowSums(tmp_val)), collapse = " ") #from ntags script
+new_val <- paste(rowSums(tags_yr_age), collapse = " ") #from ntags script
 om_rep[(loc + 1)] <- new_val
 
 #Tag sample size - #tag_N_EM
-#DECISION NEED TO DECIDE WHAT TO USE - SET ARBITRARILY TO 200
+#DECISION - SET ARBITRARILY TO 200
+#Could set to actual sample size but may swamp likelihood
 loc <- grep("#tag_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and ages
 tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- 200 #Assign for just the years and ages in YFT data
@@ -220,21 +285,38 @@ om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Tag recaptures - #OBS_tag_prop_final
-#DECISION - entering age as the age originally tagged
-#DECISION - entering prop as number of recaps
-#DECISION - entered as ages (28) for each release event (10)
+#Final column (which represents the possible recpature years + 1) covers all tags that were not recovered
+#Rows are entered as ages (28) for each release event (10) (so in blocks of 28 rows)
 #DECISION - lifespan of tags decision is used here. If adjust, adjust here too
+#DECISION - currently ignoring tag mixing rate (dat$mixing_latency_period), which is SS-speak. Counting
+#all recaps regardless of time after release
 loc <- grep("#OBS_tag_prop_final$", om_rep)
-#Set up dimensions for nt (number of years 
+#Set up dimensions for nt (number of years where recaptures are possible)
 xy = nt = NULL
 for(i in 1:length(unique(dat$tag_releases$yr))){ #Script from TM.tpl to set dimensions
   xx <- unique(dat$tag_releases$yr)[i]
-  xy[i] <- min(max(full_recap_info$nt-1),dat$endyr-xx+1)
+  xy[i] <- min(max(full_recap_info$yr_diff),dat$endyr-xx+1)
   nt[i] <- xy[i]*dat$N_areas+1
 }
-tmp_val <- array(0, dim = c(dat$Nages, max(nt), length(unique(dat$tag_releases$yr)))) #Set up for all ages, recapture years, and initial tag events
-tmp_val[cbind(full_recap_info$age, full_recap_info$nt, as.numeric(factor(full_recap_info$tfill)))] <- full_recap_info$recaps #Assign for just the years and ages in YFT data
-new_val <- apply(tmp_val, c(1,3), FUN = paste, collapse = " ")
+#Set up array for tag recaptures by age (row), by year when recaptures possible (column), by release year (3rd-dimension)
+#TO DO: Confirm with new data that if nt's are different than will need to make a jagged array. Currently not done.
+if(length(unique(nt)) == 1){  
+  tmp_val <- array(0, dim = c(dat$Nages, max(nt), length(unique(dat$tag_releases$yr)))) #numbers
+  tmp_val_prop <- tmp_val #proportions
+}
+#Add number of recaptures 
+tmp_val[cbind(full_recap_info$age, full_recap_info$yr_diff, as.numeric(factor(full_recap_info$yr.x)))] <- full_recap_info$recaps #Assign for just the years and ages in YFT data
+#Add in number of tags not captured (nt'th column) based on difference between total tags and recaptures at age
+#across possible recapture periods for each release event
+#TO DO: Ensure tagging data are fixed so that there are no negatives in this value
+tmp_val[, 19, ] <- t(tags_yr_age) - apply(tmp_val, c(1,3), FUN = sum)
+#Change to proportions
+#Sum number of tags for each age across possible recapture periods for each release event
+for(i in 1:dim(tmp_val)[3]){
+  tmp_prop <- tmp_val[,,i]/(apply(tmp_val, c(1,3), FUN = sum)[,i])
+  tmp_val_prop[,,i][which(tmp_prop!=0)] <- tmp_prop[which(tmp_prop!=0)]
+}
+new_val <- apply(tmp_val_prop, c(1,3), FUN = paste, collapse = " ")
 new_val <- c(new_val)
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
@@ -252,6 +334,7 @@ om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 ##
 #Biological data
 ##
+
 #Steepness - #steep
 loc <- grep("#steep$", om_rep)
 om_rep[(loc + 1)] <- 0.8
@@ -265,27 +348,32 @@ om_rep[(loc + 1)] <- bdat$B0/1000 #from OM description this IS R0
 loc <- grep("#sigma_recruit", om_rep)
 om_rep[(loc + 1)] <- 0.6 
 
-#Weight at age
+#Weight at age - #input_weight
+loc <- grep("#input_weight", om_rep)
+tmp_val <- round(bdat$a*bdat$L^bdat$b, 3) 
+om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ") 
 
-#Length at age
+#Weight at age in catch - #input_catch_weight
+loc <- grep("#input_catch_weight", om_rep)
+tmp_val <- round(bdat$a*bdat$L^bdat$b, 3) 
+om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ") 
 
 #Maturity at age - #maturity
 loc <- grep("#maturity$", om_rep)
 tmp_val <- bdat$Maturity
 om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
+#Fecundity - #fecundity
+#DECISION - keep as 1 for all ages
 
-#Fecundity
+#Prop_fem - #prop_fem
+#DECISION - keep as 0.5
 
 #Mortality at age - #input_M_EM
-#DECISION - Im also doing this for input_M_TRUE
-loc <- grep("#input_M", om_rep) #This reads for BOTH input_M_EM and input_M_TRUE
+#DECISION - Im also doing this for input_M_TRUE and input_M_EM
+loc <- grep("#input_M", om_rep)
 tmp_val <- bdat$M
 om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
-
-
-
-
 
 
 
@@ -306,11 +394,9 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 #TO DO OR CONFIRM THAT WE DONT NEED TO DO
 ####
 
-#UNITS OF CATCH - do we use in TIM anywhere. YRT are in number
+#UNITS OF CATCH - do we use in TIM anywhere. YRT are in number. Units are in biomass. Need to adjust. 
 #CPUE - how to enter blanks for years without data. If we enter 0 does it read as such or as empty
 #WHAT TIM DATA SET TO USE - Fill in EM.dat file or OM.dat file
 #SURVEY DATA - I dont see survey comps nor survey sample size in YFT data
 #SURVEY COMPS - In YFT I believe these are the same as the fleet comps. Thus either reuse survey comps or exclude
 #and fix survey selectivity to be the same as the fleet selectivity. Currently, Ive reused. 
-#SURVEY TIMING - I dont understand why dat$surveytiming = 0.5 (as is fleetinfo1 for llcpue) yet CPUE is for season 1. What is the timing
-#TAGGING in general. YFT tagging set up is much less details than TIM. Currently missing effN, tag mortality, report rate, lifespan of tag, etc
