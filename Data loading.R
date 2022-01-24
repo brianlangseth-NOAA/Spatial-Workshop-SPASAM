@@ -100,15 +100,42 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #Length Comp - #OBS_catch_prop
 #For TIM, the comp data is of age comps by year
 #For YFT data, the comp data is of length comps by year
-
-#Create age-length key - taken from Jon's ALK.R and modified
+#So Create age-length key taken from Jon's ALK.R and modified
 #DECISION - dat$lbin_vector final bin is 198, whereas dat$lencomp final bin is 200. There
 #isn't any catches in this last bin so ignoring for now
-#DECISION - set end of final lbin to be 205 cm (as opposed to ongoing)
+#DECISION - set end of final lbin to be 205 cm (as opposed to ongoing) (doesnt really matter since no catches in that bin)
 #DECISION - assume lognormal error for distribution of lengths around an age
-#DECISION - round probability to 2 sig digits (which truncates the possible ages with probability)
+#DECISION - round pdf probability to 2 sig digits (which truncates the possible ages with probability)
 #DECISION - not using precise se (not using CV to SE conversion)
-lengths=seq(10,205,by=5) 
+lengths=seq(10,205,by=5)
+Latage=c(22,
+         35.2865,
+         41.384,
+         45.7348,
+         49.904,
+         53.8991,
+         57.7273,
+         64.2198,
+         74.721,
+         85.5489,
+         96.3811,
+         105.259,
+         112.534,
+         118.496,
+         123.383,
+         127.387,
+         130.669,
+         133.359,
+         135.563,
+         137.369,
+         138.85,
+         140.063,
+         141.058,
+         141.872,
+         142.54,
+         143.088,
+         143.536,
+         144.168)
 #Function to calculate probability in a given length interval
 getprob=function(L1=NULL,L2=NULL,meanL=NULL,sd=NULL){
   #prob=pnorm(L2,mean=meanL,sd=sd)-pnorm(L1,mean=meanL,sd=sd)
@@ -117,8 +144,7 @@ getprob=function(L1=NULL,L2=NULL,meanL=NULL,sd=NULL){
 }
 #matrix to hold alk
 alk=matrix(NA,nrow=length(Latage),ncol=(length(lengths)-1),dimnames = list(paste0("a",seq(1:length(Latage))),paste0("l",(lengths[1:(length(lengths)-1)]))))
-#loop over 28 ages and the length bins and calculate probility for each bin
-for(a in 1:length(Latage)){
+for(a in 1:length(Latage)){ #loop over 28 ages and the length bins and calculate probility for each bin
   for(l in 1:(length(lengths)-1)){
     alk[a,l]=getprob(L1=lengths[l],L2=lengths[l+1],meanL=log(Latage[a]),sd=0.1)
   }
@@ -127,35 +153,17 @@ alk=round(alk,digits=2)
 noentry = which(colSums(alk)==0) #determine which lengths dont have any entries
 alk[1,noentry[1]]=1 #set the first column to be 1 for the first age 1
 alk[dat$Nages,noentry[-1]]=1 #set the last columns to be 1 for the last age
-#divided by column sums to produce P(A|L); i.e. column sums among ages = 1
-alk=t(t(alk)/colSums(alk))
-
+alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
 #Convert length comps to age comps
+#DECISION - assume OBS_catch_prop is blocked by year first for each fleet
 agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
-##########CONTINUE HERE
-
-
-
-#DECISION - assume OBS_catch_prop is of blocked by year first for each fleet
-
-
-
-
-
-
-##TO DO Need to complete - cannot wrap head around how to do this--------  
-
-##Get length bins - initial work on this. Likely need to replace
-data_lbins <- as.numeric(substr(colnames(dat$lencomp)[grep("^l", colnames(dat$lencomp))],2,100))
-#diff <- data_lbins[-1]-data_lbins[-length(data_lbins)] #Confirm differences are the same
-#data_lbins_mids <- data_lbins + unique(diff)/2  #DECISION - Assume length in bins is at midpoint (including plus group)
-
-#TO DO Need to complete - cannot wrap head around how to do this
-
-rlnorm(100,log(biol_dat$L[2]),sqrt(log(1+cv_l^2)))
-
-#End length comp conversion section -------------------------------------
-
+agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy,agecomp)
+#Put into om_rep file
+loc <- grep("#OBS_catch_prop$", om_rep)
+tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet, ncol = dat$Nages) #Set up for all years and fleets
+tmp_val[(dat$endyr * (agecomp_yr[,"FltSvy"] - 1) + agecomp_yr[,"Yr"]),] <- agecomp_yr[,-c(1,2)] #Assign for just the years and fleets in YFT data
+new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
+om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
@@ -184,16 +192,25 @@ new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #DECISION - not using precise se (not using CV to SE conversion)
 
-#Survey Comps - #OBS_survey_prop set to #OBS_catch_prop for fleet 7
-#DECISION - Believe these to be the same as the fleet comps. Can set survey select to that of catch
-#TO DO
+#Survey Comps - #OBS_survey_prop set to #OBS_catch_prop for fleet 3
+#DECISION - copying from proportions in fleet 3 catch for only years that overlap with cpue years. 
+#Believe these to be the same as the fleet comps. Can set survey select to that of catch
+loc <- grep("#OBS_survey_prop$", om_rep)
+tmp_val <- matrix(0, nrow = dat$endyr*dat$Nsurveys, ncol = dat$Nages) #Set up for all years and surveys
+#years of comp data for fleet 3 that overlap with years of CPUE data
+yrs_comp <- agecomp_yr[agecomp_yr[,"FltSvy"]==3,"Yr"][agecomp_yr[agecomp_yr[,"FltSvy"]==3,"Yr"] %in% dat$CPUE$year] 
+tmp_val[yrs_comp,] <- agecomp_yr[agecomp_yr[,"FltSvy"] == 3 & agecomp_yr[,"Yr"]%in%yrs_comp, -c(1:2)]
+new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
+om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
 #Sample size of comps - #OBS_survey_prop_N_EM
-#DECISION - Believe these to be the same as the fleet comps. Can set survey select to that of catch. Right now copying from catch
+#DECISION - copying from proportions in fleet 3 catch for only years that overlap with cpue years.  
+#Believe these to be the same as the fleet comps. Can set survey select to that of catch.
 #DECISION - What is NCPUEObs though?
 loc <- grep("#OBS_survey_prop_N_EM", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurvey) #Set up for all years and surveys
+tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
 tmp_val[cbind(dat$lencomp[dat$lencomp$FltSvy==3,]$Yr, dat$Nsurvey)] <- dat$lencomp[dat$lencomp$FltSvy==3,]$Nsamp #Assign for just the years and fleets in YFT data
+tmp_val[yrs_comp,] <- dat$lencomp[dat$lencomp$FltSvy==3 & dat$lencomp$Yr%in%yrs_comp,]$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
