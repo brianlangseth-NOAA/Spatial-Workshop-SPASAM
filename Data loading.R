@@ -157,7 +157,8 @@ alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. colum
 #Convert length comps to age comps
 #DECISION - assume OBS_catch_prop is blocked by year first for each fleet
 agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
-agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy,agecomp)
+agecomp_prop <- agecomp/rowSums(agecomp)
+agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy, agecomp_prop)
 #Put into om_rep file
 loc <- grep("#OBS_catch_prop$", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet, ncol = dat$Nages) #Set up for all years and fleets
@@ -231,6 +232,10 @@ om_rep[(loc + 1)] <- new_val
 #Tagging
 ####
 
+#Have tag switch on - #do_tag
+loc <- grep("#do_tag$", om_rep)
+om_rep[(loc + 1)] <- 1
+
 #Number of years with tag releases - #nyrs_release
 loc <- grep("#nyrs_release", om_rep)
 om_rep[(loc + 1)] <- length(unique(dat$tag_releases$yr)) #NOT equal to dat$N_tag_groups
@@ -267,7 +272,6 @@ add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
 om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 #DECISION - there is no tag retention or tag loss in the TIM yet. It is in YFT
-
 
 #Tags released - #ntags
 #YFT data already adjusts for initial tagging mortality
@@ -397,9 +401,10 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 ##------------------------Done Munging--------------------------------------------##
 
 ####
-#Run YFT model
+#Save YFT model as .dat file
 ####
 
+writeLines(om_rep, file.path(mod_loc, mod_name, "Operating_Model", paste0(mod_name,".dat")))
 
 #TO DO: add running scripts here or work with SIM_TIM_editing.R
 
@@ -413,7 +418,3 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 #UNITS OF CATCH - do we use in TIM anywhere. YRT are in number. Units are in biomass. Need to adjust. 
 #CPUE - how to enter blanks for years without data. If we enter 0 does it read as such or as empty
-#WHAT TIM DATA SET TO USE - Fill in EM.dat file or OM.dat file
-#SURVEY DATA - I dont see survey comps nor survey sample size in YFT data
-#SURVEY COMPS - In YFT I believe these are the same as the fleet comps. Thus either reuse survey comps or exclude
-#and fix survey selectivity to be the same as the fleet selectivity. Currently, Ive reused. 
