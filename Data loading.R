@@ -40,7 +40,7 @@ mod_name <- "YFT_1area"
 
 if(!dir.exists(file.path(mod_loc, mod_name))){
   dir.create(file.path(mod_loc, mod_name))
-  dir.create(file.path(mod_loc, mod_name, "Operating_Model"))
+  dir.create(file.path(mod_loc, mod_name, "Estimation_Model"))
   print("Directories created")
 }
 
@@ -404,7 +404,7 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 #Save YFT model as .dat file
 ####
 
-writeLines(om_rep, file.path(mod_loc, mod_name, "Operating_Model", paste0(mod_name,".dat")))
+writeLines(om_rep, file.path(mod_loc, mod_name, "Estimation_Model", paste0(mod_name,".dat")))
 
 #TO DO: add running scripts here or work with SIM_TIM_editing.R
 
