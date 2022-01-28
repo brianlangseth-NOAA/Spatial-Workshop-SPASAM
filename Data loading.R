@@ -9,10 +9,12 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #master_loc is where the base level OM and EM reside
   #mod_loc is where you want to set up your new EM run
   
-  data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data"
-  master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\test\\sel F set to OM\\Opearting_Model"
+  data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+  master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
 }
+
+#FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE
 
 
 ######################################################
@@ -25,31 +27,46 @@ dat <- dat_1A_4
 bdat <- biol_dat 
 
 
-####
-#Access model files
-####
 
-#CURRENTLY WE HAVE TO PICK THE .REP FILE FROM A RUN SET UP WITH THE CORRECT FORMAT (AGE, FLEET, AREA, etc.) 
-#THIS WAS FROM A RUN WITH JON's TIM_OM_all.dat
-#ENTER THE YFT DATA INTO THAT THE OM.rep FILE
-#BEST TO START FRESH AND FULLY AUTOMATE FILE GENERATION BUT NOT THERE AT THE MOMENT
-om_rep <- readLines(file.path(master_loc,"TIM_OM.rep"),n=-1)
+######################################################
+#Set up OM.rep file
+######################################################
 
+####
 #Set up folder for new model run
+####
+
 mod_name <- "YFT_1area"
 
 if(!dir.exists(file.path(mod_loc, mod_name))){
   dir.create(file.path(mod_loc, mod_name))
   dir.create(file.path(mod_loc, mod_name, "Estimation_Model"))
+  dir.create(file.path(mod_loc, mod_name, "Operating_Model"))
   print("Directories created")
 }
 
 
 ####
+#Run the OM to get the .rep file - Only need to do this once
+####
+setwd(file.path(mod_loc, mod_name, "Operating_Model"))
+file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
+file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
+file.copy(from = file.path(mod_loc, "Panmictic", "Operating_Model", "TIM_OM_all.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
+invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
+file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
+
+#Access the .rep file to then enter the YFT data
+om_rep <- readLines("TIM_OM.rep",n=-1)
+
+
+
+####
 #Function to ensure new data length equals current data length
 #If equal, outputs TRUE
-#If not equal, outputs number of lines to ammed to OM.rep file
+#If not equal, outputs number of lines to ammend to OM.rep file
 ####
+
 #TO DO (FOR LATER): add element to append automatically if doesnt equal
 check_entry = function(loc, loc_end, new_entry){
   entries <- grep("#", om_rep)
@@ -82,7 +99,7 @@ check_entry = function(loc, loc_end, new_entry){
 table(dat$catch$seas)#check to ensure seas is the same DECISION - assumed seas 1 is start of year
 loc <- grep("#OBS_yield_fleet$", om_rep)
 new_val <- tidyr::unite(
-  round(dat$catch[1:dat$Nfleet], 3), #DECISION - round to 3 decimals
+  round(dat$catch[,1:7], 3), #DECISION - round to 3 decimals
   sep = " ", 
   col = "new_val")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val$new_val
@@ -161,10 +178,10 @@ agecomp_prop <- agecomp/rowSums(agecomp)
 agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy, agecomp_prop)
 #Put into om_rep file
 loc <- grep("#OBS_catch_prop$", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet, ncol = dat$Nages) #Set up for all years and fleets
+tmp_val <- matrix(0, nrow = dat$endyr*7, ncol = dat$Nages) #Set up for all years and fleets
 tmp_val[(dat$endyr * (agecomp_yr[,"FltSvy"] - 1) + agecomp_yr[,"Yr"]),] <- agecomp_yr[,-c(1,2)] #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*7)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
@@ -172,6 +189,11 @@ tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nfleet) #Set up for all years 
 tmp_val[cbind(dat$lencomp$Yr, dat$lencomp$FltSvy)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+
+
+################################FltSvy has changed now###
+
+
 
 
 ####
@@ -401,16 +423,15 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 ##------------------------Done Munging--------------------------------------------##
 
 ####
-#Save YFT model as .dat file
+#Save YFT model as .dat file, copy .tpl over, run model
 ####
 
-writeLines(om_rep, file.path(mod_loc, mod_name, "Estimation_Model", paste0(mod_name,".dat")))
-
-#TO DO: add running scripts here or work with SIM_TIM_editing.R
-
-
-
-
+setwd(file.path(mod_loc, mod_name, "Estimation_Model"))
+writeLines(om_rep, paste0(mod_name,".dat"))
+file.copy(from = file.path(mod_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
+#Ensure there is an .exe file. May need to create one manuall
+invisible(shell(paste0(mod_name,".exe"," -nox -ind"), wait=T))
+          
 
 ####
 #TO DO OR CONFIRM THAT WE DONT NEED TO DO
