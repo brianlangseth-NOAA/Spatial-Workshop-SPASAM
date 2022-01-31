@@ -9,6 +9,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #master_loc is where the base level OM and EM reside
   #mod_loc is where you want to set up your new EM run
   
+  data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
@@ -47,14 +48,14 @@ if(!dir.exists(file.path(mod_loc, mod_name))){
 
 
 ####
-#Run the OM to get the .rep file - Only need to do this once
+#Run the OM to get the .rep file - Only need to do this once (if haven't uncomment the comment out lines)
 ####
 setwd(file.path(mod_loc, mod_name, "Operating_Model"))
-file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
-file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
-file.copy(from = file.path(mod_loc, "Panmictic", "Operating_Model", "TIM_OM_all.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
-invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
-file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
+# file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
+# file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
+# file.copy(from = file.path(mod_loc, "Panmictic", "Operating_Model", "TIM_OM_all.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
+# invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
+# file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
 
 #Access the .rep file to then enter the YFT data
 om_rep <- readLines("TIM_OM.rep",n=-1)
@@ -192,8 +193,6 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
 
 ################################FltSvy has changed now###
-
-
 
 
 ####
@@ -367,6 +366,51 @@ add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
 om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
+#True tag recaptures - #TRUE_tag_prop
+#Set to be the same as OBS tag recaptures
+loc <- grep("#TRUE_tag_prop$", om_rep)
+#Check if number of entries dont match up. Append new lines before replacing
+entries <- grep("#", om_rep)
+add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
+om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+om_rep[(loc + 1):(loc + length(new_val))] <- new_val
+
+#Tag recaptures no age - #OBS_tag_prop_final_no_age
+loc <- grep("#OBS_tag_prop_final_no_age", om_rep)
+tmp_val_noage <- apply(tmp_val, c(3,2), FUN = sum)
+tmp_val_noage_prop <- tmp_val_noage/rowSums(tmp_val_noage)
+new_val <- apply(tmp_val_noage_prop, 1, FUN = paste, collapse = " ")
+#Check if number of entries dont match up. Append new lines before replacing
+entries <- grep("#", om_rep)
+add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
+om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+om_rep[(loc + 1):(loc + length(new_val))] <- new_val
+
+#True tag recaptures no age - #TRUE_tag_prop_no_age
+#Set to be the same as OBS tag recaptures
+loc <- grep("#TRUE_tag_prop_no_age", om_rep)
+#Check if number of entries dont match up. Append new lines before replacing
+entries <- grep("#", om_rep)
+add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
+om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+om_rep[(loc + 1):(loc + length(new_val))] <- new_val
+
+#F scalar when tag mixing is incomplete - #F_tag_scalar
+#DECISION - Copy the 7th release value into the 8th-10th
+#Could resolve by fixing the OM.dat nyrs_release to 10 and rerunning
+loc <- grep("#F_tag_scalar", om_rep)
+tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries
+new_val <- paste(tmp_val, collapse = " ")
+om_rep[(loc + 1)] <- new_val
+
+#Residency rate of tagged fish in year of release - #T_tag_res
+#DECISION - Copy the 7th release value into the 8th-10th
+#Could resolve by fixing the OM.dat nyrs_release to 10 and rerunning
+loc <- grep("#T_tag_res", om_rep)
+tmp_val <- c(om_rep[loc+1], rep(0.73,3))
+new_val <- paste(tmp_val, collapse = " ")
+om_rep[(loc + 1)] <- new_val
+
 
 ##
 #Selectivity
@@ -429,7 +473,7 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 setwd(file.path(mod_loc, mod_name, "Estimation_Model"))
 writeLines(om_rep, paste0(mod_name,".dat"))
 file.copy(from = file.path(mod_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
-#Ensure there is an .exe file. May need to create one manuall
+#Ensure there is an .exe file. May need to create one manually
 invisible(shell(paste0(mod_name,".exe"," -nox -ind"), wait=T))
           
 
