@@ -114,6 +114,10 @@ DATA_SECTION
   init_number SSB_type
   //==1 fecundity based SSB
   //==2 weight based SSB
+
+  init_number catch_num_switch
+  //==0 input catch is in biomass
+  //==1 input catch is in number
   
   init_number Rec_type
   //==1 stock-recruit relationship assumes an average value based on R_ave
@@ -804,6 +808,7 @@ PARAMETER_SECTION
  5darray catch_at_age_fleet(1,nps,1,nr,1,nyr,1,nag,1,nfl)
  5darray catch_at_age_fleet_prop(1,nps,1,nr,1,nyr,1,nfl,1,nag) 
  4darray yield_fleet(1,nps,1,nr,1,nyr,1,nfl)
+ 4darray yieldN_fleet(1,nps,1,nr,1,nyr,1,nfl)
  4darray catch_at_age_region(1,nps,1,nr,1,nyr,1,nag)
  4darray catch_at_age_region_prop(1,nps,1,nr,1,nyr,1,nag)
  3darray yield_region(1,nps,1,nr,1,nyr)
@@ -906,6 +911,7 @@ PARAMETER_SECTION
  5darray catch_at_age_population_temp_overlap(1,nps,1,nps,1,nyr,1,nag,1,nr)
  4darray catch_at_age_natal_temp_overlap(1,nps,1,nyr,1,nag,1,nps)
  5darray yield_fleet_temp(1,nps,1,nr,1,nyr,1,nfl,1,nag)
+ 5darray yieldN_fleet_temp(1,nps,1,nr,1,nyr,1,nfl,1,nag)
  4darray yield_region_temp(1,nps,1,nr,1,nyr,1,nag)
  3darray yield_population_temp(1,nps,1,nyr,1,nag)
  3darray catch_at_age_total_temp(1,nyr,1,nag,1,nps)
@@ -2653,6 +2659,8 @@ FUNCTION get_abundance
                  }
                 yield_fleet_temp(j,r,y,z,a)=weight_catch(j,r,y,a)*catch_at_age_fleet(j,r,y,a,z);
                 yield_fleet(j,r,y,z)=sum(yield_fleet_temp(j,r,y,z));
+                yieldN_fleet_temp(j,r,y,z,a)=catch_at_age_fleet(j,r,y,a,z);
+                yieldN_fleet(j,r,y,z)=sum(yieldN_fleet_temp(j,r,y,z));
                 catch_at_age_region(j,r,y,a)=sum(catch_at_age_fleet(j,r,y,a));
                 yield_region_temp(j,r,y,a)=weight_catch(j,r,y,a)*catch_at_age_region(j,r,y,a);
                 yield_region(j,r,y)=sum(yield_region_temp(j,r,y));
@@ -3662,6 +3670,8 @@ FUNCTION get_abundance
                  
                    yield_fleet_temp(j,r,y,z,a)=weight_catch(j,r,y,a)*catch_at_age_fleet(j,r,y,a,z);
                    yield_fleet(j,r,y,z)=sum(yield_fleet_temp(j,r,y,z));
+                   yieldN_fleet_temp(j,r,y,z,a)=catch_at_age_fleet(j,r,y,a,z);
+                   yieldN_fleet(j,r,y,z)=sum(yieldN_fleet_temp(j,r,y,z));
                    catch_at_age_region(j,r,y,a)=sum(catch_at_age_fleet(j,r,y,a));
                    yield_region_temp(j,r,y,a)=weight_catch(j,r,y,a)*catch_at_age_region(j,r,y,a);
                    yield_region(j,r,y)=sum(yield_region_temp(j,r,y));
@@ -3731,6 +3741,8 @@ FUNCTION get_abundance
                   catch_at_age_fleet(j,r,y,a,z)=abundance_at_age_AM(j,r,y,a)*(1.0-exp(-(F_fleet(j,r,y,a,z)+M(j,r,y,a))))*(F_fleet(j,r,y,a,z))/(F(j,r,y,a)+M(j,r,y,a));                  
                   yield_fleet_temp(j,r,y,z,a)=weight_catch(j,r,y,a)*catch_at_age_fleet(j,r,y,a,z);
                   yield_fleet(j,r,y,z)=sum(yield_fleet_temp(j,r,y,z));
+                  yieldN_fleet_temp(j,r,y,z,a)=catch_at_age_fleet(j,r,y,a,z);
+                  yieldN_fleet(j,r,y,z)=sum(yieldN_fleet_temp(j,r,y,z));
                   catch_at_age_region(j,r,y,a)=sum(catch_at_age_fleet(j,r,y,a));
                   yield_region_temp(j,r,y,a)=weight_catch(j,r,y,a)*catch_at_age_region(j,r,y,a);
                   yield_region(j,r,y)=sum(yield_region_temp(j,r,y));
@@ -3800,6 +3812,8 @@ FUNCTION get_abundance
                   catch_at_age_fleet(j,r,y,a,z)=abundance_at_age_AM(j,r,y,a)*(1.0-exp(-(F_fleet(j,r,y,a,z)+M(j,r,y,a))))*(F_fleet(j,r,y,a,z))/(F(j,r,y,a)+M(j,r,y,a));
                   yield_fleet_temp(j,r,y,z,a)=weight_catch(j,r,y,a)*catch_at_age_fleet(j,r,y,a,z);
                   yield_fleet(j,r,y,z)=sum(yield_fleet_temp(j,r,y,z));
+                  yieldN_fleet_temp(j,r,y,z,a)=catch_at_age_fleet(j,r,y,a,z);
+                  yieldN_fleet(j,r,y,z)=sum(yieldN_fleet_temp(j,r,y,z));
                   catch_at_age_region(j,r,y,a)=sum(catch_at_age_fleet(j,r,y,a));
                   yield_region_temp(j,r,y,a)=weight_catch(j,r,y,a)*catch_at_age_region(j,r,y,a);
                   yield_region(j,r,y)=sum(yield_region_temp(j,r,y));
@@ -3869,6 +3883,8 @@ FUNCTION get_abundance
                   catch_at_age_fleet(j,r,y,a,z)=abundance_at_age_AM(j,r,y,a)*(1.0-exp(-(F_fleet(j,r,y,a,z)+M(j,r,y,a))))*(F_fleet(j,r,y,a,z))/(F(j,r,y,a)+M(j,r,y,a));
                   yield_fleet_temp(j,r,y,z,a)=weight_catch(j,r,y,a)*catch_at_age_fleet(j,r,y,a,z);
                   yield_fleet(j,r,y,z)=sum(yield_fleet_temp(j,r,y,z));
+                  yieldN_fleet_temp(j,r,y,z,a)=catch_at_age_fleet(j,r,y,a,z);
+                  yieldN_fleet(j,r,y,z)=sum(yieldN_fleet_temp(j,r,y,z));
                   catch_at_age_region(j,r,y,a)=sum(catch_at_age_fleet(j,r,y,a));
                   yield_region_temp(j,r,y,a)=weight_catch(j,r,y,a)*catch_at_age_region(j,r,y,a);
                   yield_region(j,r,y)=sum(yield_region_temp(j,r,y));
@@ -4577,15 +4593,31 @@ FUNCTION evaluate_the_objective_function
              for (int z=1;z<=nfleets(j);z++)
               {
 
-              if(diagnostics_switch==1) //use true observations, no measurement error
+              if(catch_num_switch==1) //if catch is entered as numbers
               {
-               catch_like+= square((log(yield_fleet_TRUE(j,r,y,z)+0.0001)-log(yield_fleet(j,r,y,z)+0.0001)) )/ (2.*square(OBS_yield_fleet_se(j,r,y,z))); //OBS_yield_fleet(j,r,y,z))));
-               fish_age_like -= OBS_catch_at_age_fleet_prop_N(j,r,y,z)*(((catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop(j,r,y,z)+0.001))-((catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)));
+                if(diagnostics_switch==1) //use true observations, no measurement error
+                {
+                 catch_like+= square((log(yield_fleet_TRUE(j,r,y,z)+0.0001)-log(yieldN_fleet(j,r,y,z)+0.0001)) )/ (2.*square(OBS_yield_fleet_se(j,r,y,z))); //OBS_yield_fleet(j,r,y,z))));
+                 fish_age_like -= OBS_catch_at_age_fleet_prop_N(j,r,y,z)*(((catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop(j,r,y,z)+0.001))-((catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)));
+                }
+                if(diagnostics_switch==0) //use observed values with measurement error
+                {
+                 catch_like+= square((log(OBS_yield_fleet(j,r,y,z)+0.0001)-log(yieldN_fleet(j,r,y,z)+0.0001) ))/ (2.*square(OBS_yield_fleet_se(j,r,y,z))); //OBS_yield_fleet(j,r,y,z))));
+                 fish_age_like -= OBS_catch_at_age_fleet_prop_N(j,r,y,z)*(((OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop(j,r,y,z)+0.001))-((OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)*log(OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)));
+                }
               }
-              if(diagnostics_switch==0) //use observed values with measurement error
+              if(catch_num_switch==0) //if catch is entered as biomass
               {
-               catch_like+= square((log(OBS_yield_fleet(j,r,y,z)+0.0001)-log(yield_fleet(j,r,y,z)+0.0001) ))/ (2.*square(OBS_yield_fleet_se(j,r,y,z))); //OBS_yield_fleet(j,r,y,z))));
-               fish_age_like -= OBS_catch_at_age_fleet_prop_N(j,r,y,z)*(((OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop(j,r,y,z)+0.001))-((OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)*log(OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)));
+                if(diagnostics_switch==1) //use true observations, no measurement error
+                {
+                 catch_like+= square((log(yield_fleet_TRUE(j,r,y,z)+0.0001)-log(yield_fleet(j,r,y,z)+0.0001)) )/ (2.*square(OBS_yield_fleet_se(j,r,y,z))); //OBS_yield_fleet(j,r,y,z))));
+                 fish_age_like -= OBS_catch_at_age_fleet_prop_N(j,r,y,z)*(((catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop(j,r,y,z)+0.001))-((catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop_TRUE(j,r,y,z)+0.001)));
+                }
+                if(diagnostics_switch==0) //use observed values with measurement error
+                {
+                 catch_like+= square((log(OBS_yield_fleet(j,r,y,z)+0.0001)-log(yield_fleet(j,r,y,z)+0.0001) ))/ (2.*square(OBS_yield_fleet_se(j,r,y,z))); //OBS_yield_fleet(j,r,y,z))));
+                 fish_age_like -= OBS_catch_at_age_fleet_prop_N(j,r,y,z)*(((OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)*log(catch_at_age_fleet_prop(j,r,y,z)+0.001))-((OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)*log(OBS_catch_at_age_fleet_prop(j,r,y,z)+0.001)));
+                }
               }
              }
             }
@@ -5097,6 +5129,8 @@ REPORT_SECTION
   report<<survey_fleet_bio<<endl;
   report<<"$yield_fleet"<<endl;
   report<<yield_fleet<<endl;
+  report<<"$yieldN_fleet"<<endl;
+  report<<yieldN_fleet<<endl;
 
   report<<"$total_recruit"<<endl;
   report<<total_recruits<<endl;
