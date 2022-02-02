@@ -48,7 +48,7 @@ if(!dir.exists(file.path(mod_loc, mod_name))){
 
 
 ####
-#Run the OM to get the .rep file - Only need to do this once (if haven't uncomment the comment out lines)
+#Run the OM to get the .rep file - Only need to do this once (if haven't, uncomment the commented out lines)
 ####
 setwd(file.path(mod_loc, mod_name, "Operating_Model"))
 # file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
@@ -59,7 +59,6 @@ setwd(file.path(mod_loc, mod_name, "Operating_Model"))
 
 #Access the .rep file to then enter the YFT data
 om_rep <- readLines("TIM_OM.rep",n=-1)
-
 
 
 ####
@@ -91,6 +90,11 @@ check_entry = function(loc, loc_end, new_entry){
 #####################################################
 #Data Munging!!!!
 #####################################################
+
+#Add switch for catch in numbers after the switch for SSB_type
+loc <- grep("#SSB_type", om_rep)
+om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
+
 
 ####
 #Catches
