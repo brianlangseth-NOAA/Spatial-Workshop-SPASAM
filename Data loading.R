@@ -210,6 +210,11 @@ tmp_val[cbind(as.numeric(levels(dat$CPUE$year)),dat$Nsurveys)] <- dat$CPUE$cpu #
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
+#True survey index - #true_survey_fleet_bio
+#This isn't used when diagnostic_switch is 0 (our default) but still change here
+loc <- grep("#true_survey_fleet_bio$", om_rep)
+om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+
 #Survey index SE - #OBS_survey_fleet_bio_se_EM
 loc <- grep("#OBS_survey_fleet_bio_se_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
@@ -294,7 +299,9 @@ new_val <- rep(0.9, length(unique(dat$tag_releases$yr)))
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+if(!is.logical(add_lines)) {
+  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 #DECISION - there is no tag retention or tag loss in the TIM yet. It is in YFT
 
@@ -308,7 +315,9 @@ new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+if(!is.logical(add_lines)) {
+  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Total tags - #ntags_total
@@ -327,7 +336,9 @@ new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+if(!is.logical(add_lines)) {
+  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Tag recaptures - #OBS_tag_prop_final
@@ -367,7 +378,9 @@ new_val <- c(new_val)
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+if(!is.logical(add_lines)) {
+  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #True tag recaptures - #TRUE_tag_prop
@@ -376,7 +389,9 @@ loc <- grep("#TRUE_tag_prop$", om_rep)
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+if(!is.logical(add_lines)) {
+  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Tag recaptures no age - #OBS_tag_prop_final_no_age
@@ -387,7 +402,9 @@ new_val <- apply(tmp_val_noage_prop, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+if(!is.logical(add_lines)) {
+  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #True tag recaptures no age - #TRUE_tag_prop_no_age
@@ -396,7 +413,9 @@ loc <- grep("#TRUE_tag_prop_no_age", om_rep)
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+if(!is.logical(add_lines)) {
+  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #F scalar when tag mixing is incomplete - #F_tag_scalar
@@ -480,10 +499,3 @@ file.copy(from = file.path(mod_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.p
 #Ensure there is an .exe file. May need to create one manually
 invisible(shell(paste0(mod_name,".exe"," -nox -ind"), wait=T))
           
-
-####
-#TO DO OR CONFIRM THAT WE DONT NEED TO DO
-####
-
-#UNITS OF CATCH - do we use in TIM anywhere. YRT are in number. Units are in biomass. Need to adjust. 
-#CPUE - how to enter blanks for years without data. If we enter 0 does it read as such or as empty
