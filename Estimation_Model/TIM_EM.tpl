@@ -92,12 +92,12 @@ DATA_SECTION
    //==1 natal_homing_switch==1 a fraction of fish return to natal population to spawn (inpopsantaneous migration to natal population and back at time of spawning) based spawn_return_prob; weight/mat/fecund/ are based on natal population)
   //////////////////////////////////////////////////////
 
-  init_number select_switch
+  init_matrix select_switch(1,np,1,nf)
   //==0 input selectivity
   //==1 logistic selectivity based on input sel_beta1 and sel_beta2
   //==2 double logistic selectivity based on input sel_beta1, sel_beta2, sel_beta3 and sel_beta4
   /////////////////////////////////////////////////////
-  init_number select_switch_survey
+  init_matrix select_switch_survey(1,np,1,nfs)
   //==0 input selectivity
   //==1 logistic selectivity based on input sel_beta1 and sel_beta2
   //==2 double logistic selectivity based on input sel_beta1, sel_beta2, sel_beta3 and sel_beta4
@@ -1771,19 +1771,19 @@ FUNCTION get_selectivity
            {
              for (int z=1;z<=nfleets(j);z++)
               {
-               if(select_switch==2) //4 parameter double logistic selectivity
+               if(select_switch(j,z)==2) //4 parameter double logistic selectivity
                 {
                 selectivity(j,r,y,a,z)=1/((1+mfexp(-sel_beta1(j,r,z)*(a-sel_beta2(j,r,z))))*(1+mfexp(-sel_beta3(j,r,z)*(a-sel_beta4(j,r,z)))));
                 }
-                if(select_switch==1) //two parameter logistic selectivity
+                if(select_switch(j,z)==1) //two parameter logistic selectivity
                 {
                 selectivity(j,r,y,a,z)=1/(1+mfexp(-sel_beta1(j,r,z)*(a-sel_beta2(j,r,z)))); 
                 }
-               if(select_switch==0) //input selectivity at age constant by year
+               if(select_switch(j,z)==0) //input selectivity at age constant by year
                 {
                 selectivity(j,r,y,a,z)=input_selectivity(j,r,a,z);
                 }
-               if(select_switch==-1) //input selectivity at age constant by year
+               if(select_switch(j,z)==-1) //input selectivity at age constant by year
                 {
                 selectivity(j,r,y,a,z)=selectivity_age_TRUE(j,r,a,z);
                 }
@@ -1805,19 +1805,19 @@ FUNCTION get_selectivity
             {
              for (int z=1;z<=nfleets_survey(j);z++)
                {
-                if(select_switch_survey==2) //4 parameter double logistic selectivity
+                if(select_switch_survey(j,z)==2) //4 parameter double logistic selectivity
                 {
                  survey_selectivity(j,r,y,a,z)=1/((1+mfexp(-sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z))))*(1+mfexp(-sel_beta3surv(j,r,z)*(a-sel_beta4surv(j,r,z)))));
                 }
-                if(select_switch_survey==1) //two parameter logistic selectivity
+                if(select_switch_survey(j,z)==1) //two parameter logistic selectivity
                 {
                  survey_selectivity(j,r,y,a,z)=1/(1+mfexp(-sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z)))); //
                 }
-                if(select_switch_survey==0) //input selectivity at age constant by year
+                if(select_switch_survey(j,z)==0) //input selectivity at age constant by year
                 {
                 survey_selectivity(j,r,y,a,z)=input_survey_selectivity(j,r,a,z);
                 }
-                if(select_switch_survey==-1) //input selectivity at age constant by year
+                if(select_switch_survey(j,z)==-1) //input selectivity at age constant by year
                 {
                 survey_selectivity(j,r,y,a,z)=survey_selectivity_age_TRUE(j,r,a,z);
                 }
@@ -1839,7 +1839,7 @@ FUNCTION get_selectivity
               }
              for (int z=1;z<=nfleets_survey(j);z++)
                {
-                //if(select_switch_survey==1) //two parameter logistic selectivity
+                //if(select_switch_survey(j,z)==1) //two parameter logistic selectivity
                // {
                 survey_selectivity_age(j,r,a,z)=survey_selectivity(j,r,nyrs,a,z);
                }

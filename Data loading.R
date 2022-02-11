@@ -9,7 +9,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #master_loc is where the base level OM and EM reside
   #mod_loc is where you want to set up your new EM run
   
-  data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
+  #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
@@ -90,6 +90,8 @@ check_entry = function(loc, loc_end, new_entry){
 #####################################################
 #Data Munging!!!!
 #####################################################
+
+#The following element may be able to be removed after updating SIM_TIM.R (see issue 17)
 
 #Add switch for catch in numbers after the switch for SSB_type
 loc <- grep("#SSB_type", om_rep)
@@ -439,6 +441,15 @@ om_rep[(loc + 1)] <- new_val
 #Selectivity
 ##
 
+#The following two elements may be able to be removed after updating SIM_TIM.R (see issue 17)
+
+#Update selectivity switches to differ by fleet
+loc <- grep("#select_switch$", om_rep)
+om_rep[loc+1] <- paste(rep(om_rep[loc+1], dat$Nfleet), collapse = " ")
+
+#Update selectivity switches to differ by survey fleet
+loc <- grep("#select_switch_survey", om_rep)
+om_rep[loc+1] <- paste(rep(om_rep[loc+1], dat$Nsurveys), collapse = " ")
 
 
 ##

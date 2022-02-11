@@ -32,9 +32,9 @@
 #spawn_return_switch
 0
 #select_switch
-1
+1 1
 #select_switch_survey
-1
+1 1
 #maturity_switch_equil
 0
 #SSB_type
