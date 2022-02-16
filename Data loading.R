@@ -264,6 +264,12 @@ om_rep[(loc + 1)] <- new_val
 #Tagging
 ####
 
+#For adding in new tagging data - doesnt yet working automatically with script due to ongoing issues so add here
+data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
+load(file.path(data_loc,'YFT_SRD_1A_4.Rdata'))
+dat <- dat_1A_4
+dat$N_areas <- 1
+
 #Have tag switch on - #do_tag
 loc <- grep("#do_tag$", om_rep)
 om_rep[(loc + 1)] <- 1
@@ -279,6 +285,8 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 #Lifespan of tags
 #DECISION - assume it equals to maximum difference in year recapture from year released within data
+#NOTE: with YFT 1 area data, the final release event would seem to need one less year. Unsure how EM handles
+#this but if remove that column in the .dat the model does not run, so keep.
 #Originally had as max_periods but that is SS-speak and is the periods after which tags go into the accumulator
 #age. See issue #6: https://github.com/aaronmberger-nwfsc/Spatial-Assessment-Modeling-Workshop/issues/6
 full_recap_info <- merge(dat$tag_releases, dat$tag_recaps, by = "tg") #combine tag release and recapture information by tag (tg)
@@ -309,6 +317,7 @@ om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Tags released - #ntags
 #YFT data already adjusts for initial tagging mortality
+#DECISION - assume tag releases of age 20 fish are actually age 20 fish. In reality, age 20 is a plus group for tagging
 loc <- grep("#ntags$", om_rep)
 tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and surveys
 tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- dat$tag_releases$nrel #Assign for just the years and fleets in YFT data
@@ -355,20 +364,27 @@ xy = nt = NULL
 for(i in 1:length(unique(dat$tag_releases$yr))){ #Script from TM.tpl to set dimensions
   xx <- unique(dat$tag_releases$yr)[i]
   xy[i] <- min(max(full_recap_info$yr_diff),dat$endyr-xx+1)
-  nt[i] <- xy[i]*dat$N_areas+1
+  nt[i] <- xy[i]*dat$N_areas+1 #<<<<<<<<<<<<<<<<<<<<<<This is 4 under one area model data. Confirm its corrected
 }
 #Set up array for tag recaptures by age (row), by year when recaptures possible (column), by release year (3rd-dimension)
-#TO DO: Confirm with new data that if nt's are different than will need to make a jagged array. Currently not done.
-if(length(unique(nt)) == 1){  
+#TO DO: Confirm with new data that if nt's are different than will need to make a jagged array.
+#nts are different but model doesn't run if there is a jagged array so removing jagged check for now
+#TO DO: Determine impact of supposedly needed jagged array but model wont run unless regular
+#if(length(unique(nt)) == 1){
   tmp_val <- array(0, dim = c(dat$Nages, max(nt), length(unique(dat$tag_releases$yr)))) #numbers
   tmp_val_prop <- tmp_val #proportions
-}
+#}
 #Add number of recaptures 
 tmp_val[cbind(full_recap_info$age, full_recap_info$yr_diff, as.numeric(factor(full_recap_info$yr.x)))] <- full_recap_info$recaps #Assign for just the years and ages in YFT data
 #Add in number of tags not captured (nt'th column) based on difference between total tags and recaptures at age
 #across possible recapture periods for each release event
-#TO DO: Ensure tagging data are fixed so that there are no negatives in this value
-tmp_val[, 19, ] <- t(tags_yr_age) - apply(tmp_val, c(1,3), FUN = sum)
+tmp_val[, max(nt), ] <- t(tags_yr_age) - apply(tmp_val, c(1,3), FUN = sum)
+#Due to rounding (Aaron Berger's email on Jan 25, 2022) there may be small negative numbers, 
+#in which case drop those recaptures.
+#DECISION - Where recaptures were higher than releases set number of recaptures (which are integers) to 
+#equal the slightly lower number of tags released (which are doubles) and set non-captures to 0
+tmp_val[10,c(5,36),1] <- c(tmp_val[10,5,1] + tmp_val[10,36,1], 0)
+tmp_val[5,c(10,36),9] <- c(tmp_val[5,10,9] + tmp_val[5,36,9], 0)
 #Change to proportions
 #Sum number of tags for each age across possible recapture periods for each release event
 for(i in 1:dim(tmp_val)[3]){
@@ -436,6 +452,10 @@ tmp_val <- c(om_rep[loc+1], rep(0.73,3))
 new_val <- paste(tmp_val, collapse = " ")
 om_rep[(loc + 1)] <- new_val
 
+#Revert back to original data
+data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+load(file.path(data_loc,'YFT_SRD_1A_4_v2.Rdata'))
+dat <- dat_1A_4
 
 ##
 #Selectivity
@@ -508,5 +528,6 @@ setwd(file.path(mod_loc, mod_name, "Estimation_Model"))
 writeLines(om_rep, paste0(mod_name,".dat"))
 file.copy(from = file.path(mod_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
 #Ensure there is an .exe file. May need to create one manually
+system.time({
 invisible(shell(paste0(mod_name,".exe"," -nox -ind"), wait=T))
-          
+})
