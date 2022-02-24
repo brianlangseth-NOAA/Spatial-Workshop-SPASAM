@@ -14,8 +14,18 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
 }
+if(Sys.getenv("USERNAME") == "jonathan.deroba") {
+  #data_loc is where you have your YFT data stored (have to clone repo from github)
+  #master_loc is where the base level OM and EM reside
+  #mod_loc is where you want to set up your new EM run
+  
+  #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
+  data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+  master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
+  mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
+}
 
-#FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE
+#FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE ####except two places below where directories are hardcoded; easily fixed later once tagging data is settled.
 
 
 ######################################################
@@ -23,7 +33,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
 ######################################################
 
 #One area - can adjust for other datasets
-load(file.path(data_loc,'YFT_SRD_1A_4_v2.Rdata'))
+load(file.path(data_loc,'YFT_SRD_1A_4_v2.RData'))
 dat <- dat_1A_4
 bdat <- biol_dat 
 
@@ -265,7 +275,7 @@ om_rep[(loc + 1)] <- new_val
 ####
 
 #For adding in new tagging data - doesnt yet working automatically with script due to ongoing issues so add here
-data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
+data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
 load(file.path(data_loc,'YFT_SRD_1A_4.Rdata'))
 dat <- dat_1A_4
 dat$N_areas <- 1
@@ -453,7 +463,7 @@ new_val <- paste(tmp_val, collapse = " ")
 om_rep[(loc + 1)] <- new_val
 
 #Revert back to original data
-data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
 load(file.path(data_loc,'YFT_SRD_1A_4_v2.Rdata'))
 dat <- dat_1A_4
 
