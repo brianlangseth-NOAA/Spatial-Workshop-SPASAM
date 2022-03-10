@@ -276,6 +276,7 @@ om_rep[(loc + 1)] <- new_val
 
 #For adding in new tagging data - doesnt yet working automatically with script due to ongoing issues so add here
 data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
+data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
 load(file.path(data_loc,'YFT_SRD_1A_4.Rdata'))
 dat <- dat_1A_4
 dat$N_areas <- 1
@@ -301,8 +302,10 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 #age. See issue #6: https://github.com/aaronmberger-nwfsc/Spatial-Assessment-Modeling-Workshop/issues/6
 full_recap_info <- merge(dat$tag_releases, dat$tag_recaps, by = "tg") #combine tag release and recapture information by tag (tg)
 full_recap_info$yr_diff <- full_recap_info$yr.y - full_recap_info$yr.x
+table(full_recap_info$yr_diff)
+maxlife <- 18 #max(full_recap_info$yr_diff) #18 is 90% quantile, 23 is 95%
 loc <- grep("#max_life_tags", om_rep)
-om_rep[(loc + 1)] <- max(full_recap_info$yr_diff)
+om_rep[(loc + 1)] <- maxlife
 
 #DECISION - age of full selection (kept currently at 8)
 
@@ -373,7 +376,7 @@ loc <- grep("#OBS_tag_prop_final$", om_rep)
 xy = nt = NULL
 for(i in 1:length(unique(dat$tag_releases$yr))){ #Script from TM.tpl to set dimensions
   xx <- unique(dat$tag_releases$yr)[i]
-  xy[i] <- min(max(full_recap_info$yr_diff),dat$endyr-xx+1)
+  xy[i] <- min(maxlife,dat$endyr-xx+1)
   nt[i] <- xy[i]*dat$N_areas+1 #<<<<<<<<<<<<<<<<<<<<<<This is 4 under one area model data. Confirm its corrected
 }
 #Set up array for tag recaptures by age (row), by year when recaptures possible (column), by release year (3rd-dimension)
@@ -384,8 +387,9 @@ for(i in 1:length(unique(dat$tag_releases$yr))){ #Script from TM.tpl to set dime
   tmp_val <- array(0, dim = c(dat$Nages, max(nt), length(unique(dat$tag_releases$yr)))) #numbers
   tmp_val_prop <- tmp_val #proportions
 #}
-#Add number of recaptures 
-tmp_val[cbind(full_recap_info$age, full_recap_info$yr_diff, as.numeric(factor(full_recap_info$yr.x)))] <- full_recap_info$recaps #Assign for just the years and ages in YFT data
+#Add number of recaptures
+tmp_recap_info <- full_recap_info[full_recap_info$yr_diff <= maxlife, ]
+tmp_val[cbind(tmp_recap_info$age, tmp_recap_info$yr_diff, as.numeric(factor(tmp_recap_info$yr.x)))] <- tmp_recap_info$recaps #Assign for just the years and ages in YFT data
 #Add in number of tags not captured (nt'th column) based on difference between total tags and recaptures at age
 #across possible recapture periods for each release event
 tmp_val[, max(nt), ] <- t(tags_yr_age) - apply(tmp_val, c(1,3), FUN = sum)
@@ -393,8 +397,8 @@ tmp_val[, max(nt), ] <- t(tags_yr_age) - apply(tmp_val, c(1,3), FUN = sum)
 #in which case drop those recaptures.
 #DECISION - Where recaptures were higher than releases set number of recaptures (which are integers) to 
 #equal the slightly lower number of tags released (which are doubles) and set non-captures to 0
-tmp_val[10,c(5,36),1] <- c(tmp_val[10,5,1] + tmp_val[10,36,1], 0)
-tmp_val[5,c(10,36),9] <- c(tmp_val[5,10,9] + tmp_val[5,36,9], 0)
+tmp_val[10,c(5,max(nt)),1] <- c(tmp_val[10,5,1] + tmp_val[10,max(nt),1], 0)
+tmp_val[5,c(10,max(nt)),9] <- c(tmp_val[5,10,9] + tmp_val[5,max(nt),9], 0)
 #Change to proportions
 #Sum number of tags for each age across possible recapture periods for each release event
 for(i in 1:dim(tmp_val)[3]){
@@ -464,6 +468,7 @@ om_rep[(loc + 1)] <- new_val
 
 #Revert back to original data
 data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
 load(file.path(data_loc,'YFT_SRD_1A_4_v2.Rdata'))
 dat <- dat_1A_4
 
@@ -486,13 +491,25 @@ om_rep[loc+1] <- paste(rep(om_rep[loc+1], dat$Nsurveys), collapse = " ")
 #Biological data
 ##
 
-#Steepness - #steep
+#Steepness TRUE - #steep
 loc <- grep("#steep$", om_rep)
 om_rep[(loc + 1)] <- 0.8
 
-#R average - #R_ave
+#Steepness starting value - #steep_start
+loc <- grep("#steep_start", om_rep)
+om_rep[(loc + 1)] <- 0.8
+
+#R average TRUE - #R_ave
 loc <- grep("#R_ave", om_rep)
 om_rep[(loc + 1)] <- bdat$B0/1000 #from OM description this IS R0
+
+#R average start in ln space - #Rave_start
+loc <- grep("#Rave_start", om_rep)
+om_rep[(loc + 1)] <- log(bdat$B0/1000) #from OM description this IS R0
+
+#R average mean in ln space for penalizing from - #Rave_mean
+loc <- grep("#Rave_mean", om_rep)
+om_rep[(loc + 1)] <- log(bdat$B0/1000) #from OM description this IS R0
 
 #Variance in recruitment - #sigma_recruit_EM
 #DECISION - sigma r of 0.6
