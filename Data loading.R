@@ -10,7 +10,8 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #mod_loc is where you want to set up your new EM run
   
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
-  data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+  #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+  data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data"
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
 }
@@ -21,11 +22,12 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   
   #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+  data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data"
   master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
   mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
 }
 
-#FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE ####except two places below where directories are hardcoded; easily fixed later once tagging data is settled.
+#FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE
 
 
 ######################################################
@@ -33,7 +35,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 ######################################################
 
 #One area - can adjust for other datasets
-load(file.path(data_loc,'YFT_SRD_1A_4_v2.RData'))
+load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
 dat <- dat_1A_4
 bdat <- biol_dat 
 
@@ -113,7 +115,6 @@ om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
 ####
 
 #Catch - OBS_yield_fleet
-table(dat$catch$seas)#check to ensure seas is the same DECISION - assumed seas 1 is start of year
 loc <- grep("#OBS_yield_fleet$", om_rep)
 new_val <- tidyr::unite(
   round(dat$catch[,1:7], 3), #DECISION - round to 3 decimals
@@ -135,9 +136,8 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #For TIM, the comp data is of age comps by year
 #For YFT data, the comp data is of length comps by year
 #So Create age-length key taken from Jon's ALK.R and modified
-#DECISION - dat$lbin_vector final bin is 198, whereas dat$lencomp final bin is 200. There
-#isn't any catches in this last bin so ignoring for now
-#DECISION - set end of final lbin to be 205 cm (as opposed to ongoing) (doesnt really matter since no catches in that bin)
+#DECISION - dat$lbin_vector final bin is 198, whereas dat$lencomp final bin is 200. Assume it should be 200
+#DECISION - set end of final lbin to be 205 cm (as opposed to ongoing) Thus assume the catches in bin 200 go up to 205
 #DECISION - assume lognormal error for distribution of lengths around an age
 #DECISION - round pdf probability to 2 sig digits (which truncates the possible ages with probability)
 #DECISION - not using precise se (not using CV to SE conversion)
@@ -195,10 +195,10 @@ agecomp_prop <- agecomp/rowSums(agecomp)
 agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy, agecomp_prop)
 #Put into om_rep file
 loc <- grep("#OBS_catch_prop$", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr*7, ncol = dat$Nages) #Set up for all years and fleets
+tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet, ncol = dat$Nages) #Set up for all years and fleets
 tmp_val[(dat$endyr * (agecomp_yr[,"FltSvy"] - 1) + agecomp_yr[,"Yr"]),] <- agecomp_yr[,-c(1,2)] #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr*7)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
@@ -274,20 +274,13 @@ om_rep[(loc + 1)] <- new_val
 #Tagging
 ####
 
-#For adding in new tagging data - doesnt yet working automatically with script due to ongoing issues so add here
-data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
-data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
-load(file.path(data_loc,'YFT_SRD_1A_4.Rdata'))
-dat <- dat_1A_4
-dat$N_areas <- 1
-
 #Have tag switch on - #do_tag
 loc <- grep("#do_tag$", om_rep)
 om_rep[(loc + 1)] <- 1
 
 #Number of years with tag releases - #nyrs_release
 loc <- grep("#nyrs_release", om_rep)
-om_rep[(loc + 1)] <- length(unique(dat$tag_releases$yr)) #NOT equal to dat$N_tag_groups
+om_rep[(loc + 1)] <- length(unique(dat$tag_releases$yr)) #NOT equal to dat$N_tag_groups (which is number tag release events, not years)
 
 #Years of tag releases - #years_of_tag_releases
 loc <- grep("#years_of_tag_releases", om_rep)
@@ -295,15 +288,13 @@ tmp_val <- unique(dat$tag_releases$yr)
 om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 #Lifespan of tags
-#DECISION - assume it equals to maximum difference in year recapture from year released within data
-#NOTE: with YFT 1 area data, the final release event would seem to need one less year. Unsure how EM handles
-#this but if remove that column in the .dat the model does not run, so keep.
+#DECISION - Set to fixed value (originally assumed it equals to maximum difference in year recapture from year released within data)
 #Originally had as max_periods but that is SS-speak and is the periods after which tags go into the accumulator
 #age. See issue #6: https://github.com/aaronmberger-nwfsc/Spatial-Assessment-Modeling-Workshop/issues/6
 full_recap_info <- merge(dat$tag_releases, dat$tag_recaps, by = "tg") #combine tag release and recapture information by tag (tg)
 full_recap_info$yr_diff <- full_recap_info$yr.y - full_recap_info$yr.x
 table(full_recap_info$yr_diff)
-maxlife <- 18 #max(full_recap_info$yr_diff) #18 is 90% quantile, 23 is 95%
+maxlife <- 18 #max(full_recap_info$yr_diff) #16 is 90% quantile, 18 is 92%, 21 is 95%
 loc <- grep("#max_life_tags", om_rep)
 om_rep[(loc + 1)] <- maxlife
 
@@ -368,25 +359,23 @@ om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 #Tag recaptures - #OBS_tag_prop_final
 #Final column (which represents the possible recpature years + 1) covers all tags that were not recovered
 #Rows are entered as ages (28) for each release event (10) (so in blocks of 28 rows)
-#DECISION - lifespan of tags decision is used here. If adjust, adjust here too
+#DECISION - lifespan of tags decision is used here. If adjusted, these data are adjusted too
 #DECISION - currently ignoring tag mixing rate (dat$mixing_latency_period), which is SS-speak. Counting
-#all recaps regardless of time after release
+#all early recaps regardless of how soon recaptured
 loc <- grep("#OBS_tag_prop_final$", om_rep)
 #Set up dimensions for nt (number of years where recaptures are possible)
 xy = nt = NULL
 for(i in 1:length(unique(dat$tag_releases$yr))){ #Script from TM.tpl to set dimensions
   xx <- unique(dat$tag_releases$yr)[i]
   xy[i] <- min(maxlife,dat$endyr-xx+1)
-  nt[i] <- xy[i]*dat$N_areas+1 #<<<<<<<<<<<<<<<<<<<<<<This is 4 under one area model data. Confirm its corrected
+  nt[i] <- xy[i]*dat$N_areas+1
 }
 #Set up array for tag recaptures by age (row), by year when recaptures possible (column), by release year (3rd-dimension)
-#TO DO: Confirm with new data that if nt's are different than will need to make a jagged array.
-#nts are different but model doesn't run if there is a jagged array so removing jagged check for now
-#TO DO: Determine impact of supposedly needed jagged array but model wont run unless regular
-#if(length(unique(nt)) == 1){
+#DECISION - ignore all recaptures made after the entered maxlife of tags 
+if(length(unique(nt)) == 1){
   tmp_val <- array(0, dim = c(dat$Nages, max(nt), length(unique(dat$tag_releases$yr)))) #numbers
   tmp_val_prop <- tmp_val #proportions
-#}
+}
 #Add number of recaptures
 tmp_recap_info <- full_recap_info[full_recap_info$yr_diff <= maxlife, ]
 tmp_val[cbind(tmp_recap_info$age, tmp_recap_info$yr_diff, as.numeric(factor(tmp_recap_info$yr.x)))] <- tmp_recap_info$recaps #Assign for just the years and ages in YFT data
@@ -394,11 +383,9 @@ tmp_val[cbind(tmp_recap_info$age, tmp_recap_info$yr_diff, as.numeric(factor(tmp_
 #across possible recapture periods for each release event
 tmp_val[, max(nt), ] <- t(tags_yr_age) - apply(tmp_val, c(1,3), FUN = sum)
 #Due to rounding (Aaron Berger's email on Jan 25, 2022) there may be small negative numbers, 
-#in which case drop those recaptures.
 #DECISION - Where recaptures were higher than releases set number of recaptures (which are integers) to 
 #equal the slightly lower number of tags released (which are doubles) and set non-captures to 0
-tmp_val[10,c(5,max(nt)),1] <- c(tmp_val[10,5,1] + tmp_val[10,max(nt),1], 0)
-tmp_val[5,c(10,max(nt)),9] <- c(tmp_val[5,10,9] + tmp_val[5,max(nt),9], 0)
+tmp_val[16,c(2,max(nt)),1] <- c(tmp_val[16,2,1] + tmp_val[16,max(nt),1], 0)
 #Change to proportions
 #Sum number of tags for each age across possible recapture periods for each release event
 for(i in 1:dim(tmp_val)[3]){
@@ -454,7 +441,7 @@ om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 #DECISION - Copy the 7th release value into the 8th-10th
 #Could resolve by fixing the OM.dat nyrs_release to 10 and rerunning
 loc <- grep("#F_tag_scalar", om_rep)
-tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries
+tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries (TO DO: the 3 entries are HARD CODED, so possibly revise)
 new_val <- paste(tmp_val, collapse = " ")
 om_rep[(loc + 1)] <- new_val
 
@@ -462,15 +449,9 @@ om_rep[(loc + 1)] <- new_val
 #DECISION - Copy the 7th release value into the 8th-10th
 #Could resolve by fixing the OM.dat nyrs_release to 10 and rerunning
 loc <- grep("#T_tag_res", om_rep)
-tmp_val <- c(om_rep[loc+1], rep(0.73,3))
+tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries (TO DO: the 3 entries are HARD CODED, so possibly revise)
 new_val <- paste(tmp_val, collapse = " ")
 om_rep[(loc + 1)] <- new_val
-
-#Revert back to original data
-data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
-data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
-load(file.path(data_loc,'YFT_SRD_1A_4_v2.Rdata'))
-dat <- dat_1A_4
 
 ##
 #Selectivity
