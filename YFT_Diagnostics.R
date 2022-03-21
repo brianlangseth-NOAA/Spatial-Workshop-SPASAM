@@ -85,7 +85,7 @@ EM_name<-"YFT_1area"
 
 #EM Location
 #EM_direct<-paste0(direct_master,"\\Estimation_Model",sep="") #location of run(s)
-EM_direct<-"C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\MaxPeriod18_RaveMore_fixSelFleet"
+EM_direct<-"C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Newest data copy of MaxPeriod18"
 
 ###########################################################################
 
@@ -290,15 +290,18 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
   #####################
   #Fishery Selectivity
   
-  if(nreg_OM==nreg){ 
-    f.select<-data.frame(Age=rep(ages,nreg), Reg=rep(c(1:nreg),each=na),Select_Est = as.vector(t(out$selectivity_age)))#, Select_T=as.vector(t(out$selectivity_age_TRUE)))
-  }
-  f.select.plot<-melt(f.select,id=c("Reg","Age"))
-  f.select.plot$Reg<-as.factor(f.select$Reg)
+  #if(nreg_OM==nreg){ 
+  #  f.select<-data.frame(Age=rep(ages,nreg), Reg=rep(c(1:nreg),each=na),Select_Est = as.vector(t(out$selectivity_age)))#, Select_T=as.vector(t(out$selectivity_age_TRUE)))
+  #}
+  f.select<-data.frame(Flt=rep(c(1:fleets),each=na),Age=rep(ages,fleets))
+  f.select<-f.select[order(f.select$Age),]
+  f.select=data.frame(f.select,Select_Est = as.vector(t(out$selectivity_age)))#, Select_T=as.vector(t(out$selectivity_age_TRUE)))
+  f.select.plot<-melt(f.select,id=c("Flt","Age"))
+  f.select.plot$Flt<-as.factor(f.select$Flt)
   
   f.select.p<-ggplot(f.select.plot,aes(Age, value))+
     geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
-    facet_wrap(~Reg)+
+    facet_wrap(~Flt)+
     scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","True"))+
     scale_linetype_manual(values=c(1,2),labels = c("Estimated","True"))+
     ylab("Selectivity")+
