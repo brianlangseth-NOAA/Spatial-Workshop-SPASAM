@@ -333,21 +333,26 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
   ############################################################
   
   #combining true and estimated together
-  f.max<-rowMaxs(out$F)
-  f.max.t<-rowMaxs(out$F_TRUE)
+  #f.max<-rowMaxs(out$F)
+  #f.max.t<-rowMaxs(out$F_TRUE)
   
+  f.fleet=out$F_year
+  #if(nreg_OM==nreg){ 
+   # F.year<-data.frame(Year=rep(years,nreg), Reg=rep(c(1:nreg),each=nyrs),F_year=f.max)#, F_year_T=f.max.t)
+  #}
+  F.year<-data.frame(Flt=rep(c(1:fleets),each=nyrs),Year=rep(years,fleets))
+  #F.year<-F.year[order(F.year$Year),]
+  F.year=data.frame(F.year,F_Est = as.vector(f.fleet))#, Select_T=as.vector(t(out$selectivity_age_TRUE)))
+  F.plot<-melt(F.year,id=c("Flt","Year"))
+  F.plot$Flt<-as.factor(F.plot$Flt)
   
-  if(nreg_OM==nreg){ 
-    F.year<-data.frame(Year=rep(years,nreg), Reg=rep(c(1:nreg),each=nyrs),F_year=f.max)#, F_year_T=f.max.t)
-  }
-  
-  F.plot<-melt(F.year,id=c("Reg","Year"))
-  F.plot$Reg<-as.factor(F.plot$Reg)
+  #F.plot<-melt(F.year,id=c("Reg","Year"))
+  #F.plot$Reg<-as.factor(F.plot$Reg)
   
   F.plot.p<-ggplot(F.plot,aes(Year,value))+
     geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
     theme_bw()+
-    facet_wrap(~Reg)+
+    facet_wrap(~Flt)+
     scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","True"))+
     scale_linetype_manual(values=c(1,2),labels = c("Estimated","True"))+
     ylab("F")+
@@ -363,19 +368,19 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
   # Yield
   
   #need to fix this for fleets as areas 
-  Y.year<-data.frame(Year=rep(years,nreg), Reg=rep(c(1:nreg),each=nyrs),Estimated=out$yield_fleet,Observed=out$OBS_yield_fleet ) 
+  Y.year<-data.frame(Flt=rep(c(1:fleets),each=nyrs),Year=rep(years,fleets),Estimated=as.vector(out$yield_fleet),Observed=as.vector(out$OBS_yield_fleet))
   
-  Y.year.plot<-melt(Y.year, id=c("Reg","Year"))
-  Fleet.a=rep(c(1:fleets),each=nyrs)
-  Fleet=rep(Fleet.a,times=nreg)
-  Y.year.plot$Fleet=Fleet
-  Y.year.plot$variable=gsub(paste0(".",'[0-9]'),'',Y.year.plot$variable)
+  Y.year.plot<-melt(Y.year, id=c("Flt","Year"))
+  #Fleet.a=rep(c(1:fleets),each=nyrs)
+  #Fleet=rep(Fleet.a,times=nreg)
+  #Y.year.plot$Fleet=Fleet
+  #Y.year.plot$variable=gsub(paste0(".",'[0-9]'),'',Y.year.plot$variable)
   
   yield.p<-ggplot(Y.year.plot,aes(Year,value,shape=variable))+
     geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
     geom_point(size=2, alpha = 0.5)+
     scale_shape_manual(values=c(NA,16),labels = c("Estimated","Observed"))+
-    facet_wrap(~Reg)+
+    facet_wrap(~Flt)+
     scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","Observed"))+
     scale_linetype_manual(values=c(1,0),labels = c("Estimated","Observed"))+
     ylab("Yield")+
@@ -391,15 +396,16 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
   
   #if(resid.switch==2){
   #Y.year$resid<-((Y.year$Estimated-Y.year$Observed)/Y.year$Observed)*100 #JJD
-  Y.year[,paste0("resid.",seq(1:fleets))]=((Y.year[,paste0("Estimated.",seq(1:fleets))]-Y.year[,paste0("Observed.",seq(1:fleets))])/Y.year[,paste0("Observed.",seq(1:fleets))])*100
-  
+  #Y.year[,paste0("resid.",seq(1:fleets))]=((Y.year[,paste0("Estimated.",seq(1:fleets))]-Y.year[,paste0("Observed.",seq(1:fleets))])/Y.year[,paste0("Observed.",seq(1:fleets))])*100
+  Y.year$resid=(Y.year$Estimated-Y.year$Observed)/Y.year$Observed*100
   #}
   
   #y.resid.p<-melt(Y.year[,c(1,2,5)],id=c("Reg","Year")) #JJD
-  y.resid.p<-melt(Y.year[,c(1,2,(ncol(Y.year)-(fleets-1)):ncol(Y.year))], id=c("Reg","Year"))
+  #y.resid.p<-melt(Y.year[,c(1,2,(ncol(Y.year)-(fleets-1)):ncol(Y.year))], id=c("Reg","Year"))
+  y.resid.p<-melt(Y.year,id=c("Flt","Year"))
   #y.resid.p$Fleet=Fleet #Fleet defined above for Y.year.plot
   #y.resid.p$variable=gsub(paste0(".",'[0-9]'),'',y.resid.p$variable)
-  
+  y.resid.p=y.resid.p[y.resid.p$variable=="resid",]
   #
   Y.resid.plot<-ggplot(y.resid.p,aes(Year,value))+
     geom_hline(aes(yintercept=0), col = "grey20", lty = 2)+
@@ -407,7 +413,7 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
     theme_bw()+
     scale_color_gradient2(low="red",mid="grey",high ="blue")+
     ylab("Difference (True-Estimated)")+
-    facet_wrap(~Reg)+
+    facet_wrap(~Flt)+
     diag_theme+
     theme(legend.position = "none", legend.justification = c(1,1))+
     ggtitle("Yield Residuals")
@@ -506,15 +512,19 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
   ######################
   #fishery age comps
   
-  fishery.comps.resid<-data.frame(Year=rep(years,nreg), Reg=rep(c(1:nreg),each=nyrs))
-  
-  
+  fishery.comps.resid<-data.frame(Year=rep(years,fleets),Flt=rep(c(1:fleets),each=nyrs))
+  fishery.comps.resid=fishery.comps.resid[with(fishery.comps.resid,order(Year)),]
+  Age=rep(ages,(fleets*nyrs))
+  Age=Age[order(Age)]
+  fishery.comps.resid=cbind(fishery.comps.resid,"variable"=Age)
+
   if(npops==1){
     
-    fishery.prop.resid<-data.frame(out$EST_catch_age_fleet_prop-out$OBS_catch_prop)
+    fishery.prop.resid<-data.frame(out$OBS_catch_prop-out$EST_catch_age_fleet_prop)
     #    fishery.prop.resid<-data.frame((out$OBS_catch_prop-out$EST_catch_age_fleet_prop)/out$OBS_catch_prop)
-    fishery.comps.resid<-cbind(fishery.comps.resid,fishery.prop.resid)
-    fishery.long<-melt(fishery.comps.resid,id.vars=c("Year","Reg"))
+    fishery.long<-data.frame(fishery.comps.resid,resid=stack(fishery.prop.resid)[1])
+    names(fishery.long)[names(fishery.long)=="values"]="value"
+    #fishery.long<-melt(fishery.comps.resid,id.vars=c("Year","Flt"))
   }
   
   
@@ -542,7 +552,7 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
     scale_fill_gradient2(low="red",mid="grey99",high ="blue")+
     scale_y_continuous(trans = "reverse")+
     labs(x="Age", y="Year", title="Fishery Age Comp Residuals") +
-    facet_grid(Reg~.)+
+    facet_grid(Flt~.)+
     theme_bw() + 
     theme(axis.text.x=element_text(size=9, angle=0, vjust=0.3),
           axis.text.y=element_text(size=9),
