@@ -942,7 +942,9 @@ PARAMETER_SECTION
   number survey_like
   number Tpen_like
   number F_pen_like
+  number F_pen_like_early
   number M_pen_like
+  number M_pen_like_early
   number Bpen_like
   number Rave_pen
 
@@ -1692,6 +1694,9 @@ FUNCTION get_movement
 
 ///////SELECTIVITY CALCULATIONS///////
 FUNCTION get_selectivity
+ //to define max selectivity at age and rescale to max of 1.0
+ dvariable sel_temp;
+ //dvariable sel_temp_surv;
  //set q to true if neg phase
    if(ph_q<0)
     {
@@ -1773,7 +1778,9 @@ FUNCTION get_selectivity
               {
                if(select_switch(j,z)==2) //4 parameter double logistic selectivity
                 {
-                selectivity(j,r,y,a,z)=1/((1+mfexp(-sel_beta1(j,r,z)*(a-sel_beta2(j,r,z))))*(1+mfexp(-sel_beta3(j,r,z)*(a-sel_beta4(j,r,z)))));
+                selectivity(j,r,y,a,z)=(1/(1+mfexp(-1*sel_beta1(j,r,z)*(a-sel_beta2(j,r,z)))))*(1-(1/(1+mfexp(-1*sel_beta3(j,r,z)*(a-(sel_beta2(j,r,z)+sel_beta4(j,r,z)))))));
+                //elem_prod( (1./(1.+mfexp(-1.*slope1*(ages-A501)))),(1.-(1./(1.+mfexp(-1.*slope2*(ages-(A501+A502)))))) );
+                //1/((1+mfexp(-sel_beta1(j,r,z)*(a-sel_beta2(j,r,z))))*(1+mfexp(-sel_beta3(j,r,z)*(a-sel_beta4(j,r,z)))));
                 }
                 if(select_switch(j,z)==1) //two parameter logistic selectivity
                 {
@@ -1807,7 +1814,8 @@ FUNCTION get_selectivity
                {
                 if(select_switch_survey(j,z)==2) //4 parameter double logistic selectivity
                 {
-                 survey_selectivity(j,r,y,a,z)=1/((1+mfexp(-sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z))))*(1+mfexp(-sel_beta3surv(j,r,z)*(a-sel_beta4surv(j,r,z)))));
+                 survey_selectivity(j,r,y,a,z)=(1/(1+mfexp(-1*sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z)))))*(1-(1/(1+mfexp(-1*sel_beta3surv(j,r,z)*(a-(sel_beta2surv(j,r,z)+sel_beta4surv(j,r,z)))))));
+                 //survey_selectivity(j,r,y,a,z)=1/((1+mfexp(-sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z))))*(1+mfexp(-sel_beta3surv(j,r,z)*(a-sel_beta4surv(j,r,z)))));
                 }
                 if(select_switch_survey(j,z)==1) //two parameter logistic selectivity
                 {
@@ -1827,7 +1835,7 @@ FUNCTION get_selectivity
            }
           }
 
-  for (int j=1;j<=npops;j++)
+   for (int j=1;j<=npops;j++)
    {
     for (int r=1;r<=nregions(j);r++)
      {
@@ -1846,7 +1854,6 @@ FUNCTION get_selectivity
               }
              }
             }
-           
 
 ///////FISHING MORTALITY CALCULATIONS///////
 FUNCTION get_F_age
@@ -4928,40 +4935,61 @@ FUNCTION evaluate_the_objective_function
   
  if(active(ln_F))   /// Early penalty to keep F under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      F_pen_like+= (norm2(mfexp(ln_F)));
+    }
+    if (F_pen_like >= F_pen_like_early) //Add a catch to report early penalty values
+    {
+     F_pen_like_early = F_pen_like;
     }
   }
   
  if(active(ln_M_CNST))   /// Early penalty to keep M under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      M_pen_like+= (square(mfexp(ln_M_CNST)));
     }
+    if (M_pen_like >= M_pen_like_early) //Add a catch to report early penalty values
+    {
+     M_pen_like_early = M_pen_like;
+    }
   }
+
  if(active(ln_M_pop_CNST))   /// Early penalty to keep M under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      M_pen_like+= (norm2(mfexp(ln_M_pop_CNST)));
     }
+    if (M_pen_like >= M_pen_like_early) //Add a catch to report early penalty values
+    {
+     M_pen_like_early = M_pen_like;
+    }    
   }
 
  if(active(ln_M_age_CNST))   /// Early penalty to keep M under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      M_pen_like+= (norm2(mfexp(ln_M_age_CNST)));
+    }
+    if (M_pen_like >= M_pen_like_early) //Add a catch to report early penalty values
+    {
+     M_pen_like_early = M_pen_like;
     }
   }
 
  if(active(ln_M_pop_age))   /// Early penalty to keep M under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      M_pen_like+= (norm2(mfexp(ln_M_pop_age)));
+    }
+    if (M_pen_like >= M_pen_like_early) //Add a catch to report early penalty values
+    {
+     M_pen_like_early = M_pen_like;
     }
   }
 
@@ -5001,27 +5029,33 @@ REPORT_SECTION
   report<<"$f"<<endl;
   report<<f<<endl;
   report<<"$tag_like"<<endl;
-  report<<tag_like<<endl;
+  report<<tag_like*wt_tag<<endl;
   report<<"$fish_age_like"<<endl;
-  report<<fish_age_like<<endl;
+  report<<fish_age_like*wt_fish_age<<endl;
   report<<"$survey_age_like"<<endl;
-  report<<survey_age_like<<endl;
+  report<<survey_age_like*wt_srv_age<<endl;
   report<<"$survey_like"<<endl;
-  report<<survey_like<<endl;
+  report<<survey_like*wt_srv<<endl;
   report<<"$catch_like"<<endl;
-  report<<catch_like<<endl;
+  report<<catch_like*wt_catch<<endl;
   report<<"$rec_like"<<endl;
-  report<<rec_like<<endl;
+  report<<rec_like*wt_rec<<endl;
   report<<"$Tpen_like"<<endl;
-  report<<Tpen_like<<endl;
+  report<<Tpen_like*wt_T_pen<<endl;
   report<<"$F_pen_like"<<endl;
-  report<<F_pen_like<<endl;
+  report<<F_pen_like*wt_F_pen<<endl;
+  report<<"$early_F_pen_like"<<endl;
+  report<<F_pen_like_early<<endl;
   report<<"$M_pen_like"<<endl;
-  report<<M_pen_like<<endl;
+  report<<M_pen_like*wt_M_pen<<endl;
+  report<<"$early_M_pen_like"<<endl;
+  report<<M_pen_like_early<<endl;
   report<<"$Bpen_like"<<endl;
-  report<<Bpen_like<<endl;
+  report<<Bpen_like*wt_B_pen<<endl;
   report<<"$abund_dev_pen"<<endl;
-  report<<init_abund_pen<<endl;
+  report<<init_abund_pen*wt_abund_pen<<endl;
+  report<<"$Rave_pen"<<endl;
+  report<<Rave_pen<<endl;
 
 //use these to determine which movement graphs to use in sim wrappers
   report<<"$ph_T_YR"<<endl;

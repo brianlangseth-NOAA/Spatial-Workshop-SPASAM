@@ -525,6 +525,29 @@ tmp_val <- bdat$M
 om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 
+##
+#Switches for penalties and weighting
+##
+
+#Penalty for recruitment being different from Rave_mean
+loc <- grep("#Rave_pen_switch", om_rep)
+om_rep[(loc+1)] <- 1
+loc <- grep("#wt_Rave_pen", om_rep)
+om_rep[(loc+1)] <- 10
+
+#Tagging weight to include tag likelihood 
+loc <- grep("#wt_tag", om_rep)
+om_rep[(loc+1)] <- 0
+
+#Initial abundance set up and penalty for initial value at age being different from mean_N
+loc <- grep("#init_abund_switch", om_rep) #decaying from Rave
+om_rep[(loc+1)] <- 1
+loc <- grep("#abund_pen_switch", om_rep) #keep off
+om_rep[(loc+1)] <- 0
+loc <- grep("#wt_abund_pen", om_rep) #keep off
+om_rep[(loc+1)] <- 0.1
+
+
 
 ##------------------------Done Munging--------------------------------------------##
 

@@ -942,7 +942,9 @@ PARAMETER_SECTION
   number survey_like
   number Tpen_like
   number F_pen_like
+  number F_pen_like_early
   number M_pen_like
+  number M_pen_like_early
   number Bpen_like
   number Rave_pen
 
@@ -4933,40 +4935,61 @@ FUNCTION evaluate_the_objective_function
   
  if(active(ln_F))   /// Early penalty to keep F under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      F_pen_like+= (norm2(mfexp(ln_F)));
+    }
+    if (F_pen_like >= F_pen_like_early) //Add a catch to report early penalty values
+    {
+     F_pen_like_early = F_pen_like;
     }
   }
   
  if(active(ln_M_CNST))   /// Early penalty to keep M under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      M_pen_like+= (square(mfexp(ln_M_CNST)));
     }
+    if (M_pen_like >= M_pen_like_early) //Add a catch to report early penalty values
+    {
+     M_pen_like_early = M_pen_like;
+    }
   }
+
  if(active(ln_M_pop_CNST))   /// Early penalty to keep M under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      M_pen_like+= (norm2(mfexp(ln_M_pop_CNST)));
     }
+    if (M_pen_like >= M_pen_like_early) //Add a catch to report early penalty values
+    {
+     M_pen_like_early = M_pen_like;
+    }    
   }
 
  if(active(ln_M_age_CNST))   /// Early penalty to keep M under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      M_pen_like+= (norm2(mfexp(ln_M_age_CNST)));
+    }
+    if (M_pen_like >= M_pen_like_early) //Add a catch to report early penalty values
+    {
+     M_pen_like_early = M_pen_like;
     }
   }
 
  if(active(ln_M_pop_age))   /// Early penalty to keep M under wraps
   {
-    if (current_phase()<last_phase())
+    if (last_phase()==0)
     {
      M_pen_like+= (norm2(mfexp(ln_M_pop_age)));
+    }
+    if (M_pen_like >= M_pen_like_early) //Add a catch to report early penalty values
+    {
+     M_pen_like_early = M_pen_like;
     }
   }
 
@@ -5021,12 +5044,18 @@ REPORT_SECTION
   report<<Tpen_like*wt_T_pen<<endl;
   report<<"$F_pen_like"<<endl;
   report<<F_pen_like*wt_F_pen<<endl;
+  report<<"$early_F_pen_like"<<endl;
+  report<<F_pen_like_early<<endl;
   report<<"$M_pen_like"<<endl;
   report<<M_pen_like*wt_M_pen<<endl;
+  report<<"$early_M_pen_like"<<endl;
+  report<<M_pen_like_early<<endl;
   report<<"$Bpen_like"<<endl;
   report<<Bpen_like*wt_B_pen<<endl;
   report<<"$abund_dev_pen"<<endl;
   report<<init_abund_pen*wt_abund_pen<<endl;
+  report<<"$Rave_pen"<<endl;
+  report<<Rave_pen<<endl;
 
 //use these to determine which movement graphs to use in sim wrappers
   report<<"$ph_T_YR"<<endl;
