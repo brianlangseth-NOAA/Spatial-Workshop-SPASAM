@@ -57,7 +57,7 @@
 #recruit_randwalk_switch
 0
 #init_abund_switch
-1
+0
 #est_dist_init_abund
 0
 #tspawn_EM
@@ -81,7 +81,8 @@
 #ph_lmr
 1
 #Rave_start
-11.4850464311275
+#11.4850464311275
+4.6
 #lb_R_ave
 2
 #ub_R_ave
@@ -105,7 +106,7 @@
 #Rapp_start
 0
 #ph_init_abund
--1
+1
 #N_start
 0
 #init_dist_start
@@ -123,7 +124,7 @@
 #ub_init_abund
 10
 #ph_F
-3
+-3
 #lb_F
 -5
 #ub_F
@@ -155,55 +156,55 @@
 #ph_sel_log
 -4
 #lb_sel_beta1
--5
+-10
 #ub_sel_beta1
-5
+10
 #sel_beta1_start
 0
 #lb_sel_beta2
--5
-#ub_sel_beta2
-5
-#sel_beta2_start
 0
+#ub_sel_beta2
+55
+#sel_beta2_start
+7
 #lb_sel_beta3
--5
+-10
 #ub_sel_beta3
-5
+10
 #sel_beta3_start
 0
 #lb_sel_beta4
--5
+0
 #ub_sel_beta4
-5
+55
 #sel_beta4_start
-2
+7
 #lb_sel_beta1_surv
--5
+-10
 #ub_sel_beta1_surv
-5
+10
 #sel_beta1_surv_start
 0
 #lb_sel_beta2_surv
--5
-#ub_sel_beta2_surv
-5
-#sel_beta2_surv_start
 0
+#ub_sel_beta2_surv
+55
+#sel_beta2_surv_start
+7
 #lb_sel_beta3_surv
--5
+-10
 #ub_sel_beta3_surv
-5
+10
 #sel_beta3_surv_start
 0
 #lb_sel_beta4_surv
--5
+0
 #ub_sel_beta4_surv
-5
+55
 #sel_beta4_surv_start
-2
+7
 #ph_sel_log_surv
-4
+-4
 #ph_sel_dubl
 -5
 #ph_sel_dubl_surv
@@ -285,7 +286,7 @@
 #wt_surv
 1
 #wt_catch
-1
+0.1
 #wt_fish_age
 1
 #wt_srv_age
@@ -307,7 +308,7 @@
 #abund_pen_switch
 0
 #wt_abund_pen
-0.1
+0
 #Mean_N
 8
 #move_pen_switch
@@ -319,11 +320,12 @@
 #sigma_Tpen_EM
 0.5
 #Rave_pen_switch
-1
+0
 #wt_Rave_pen
-10
+0
 #Rave_mean
-11.4850464311275
+#11.4850464311275
+4.6
 #input_weight
 0.236 0.957 1.536 2.066 2.676 3.362 4.121 5.653 8.859 13.234 18.849 24.478 29.845 34.783 39.212 43.108 46.486 49.383 51.843 53.918 55.661 57.115 58.327 59.331 60.164 60.852 61.419 62.225
 #input_catch_weight
@@ -4367,13 +4369,13 @@
 #q_survey
  0.0015
 #sel_beta1
- 1 1 1 1 1 1 1
+ 0.37  0.37  0.37  0.37  0.37  0.37  0.37
 #sel_beta2
- 7 7 7 4 4 7 7
+ 7 7 7 7 7 7 7
 #sel_beta3
- -1 -1 -1 -1 -1 -1 -1
+ 0.135 0.135 0.135 0.135 0.135 0.135 0.135
 #sel_beta4
- 10 10 10 10 10 10 10
+ 20 20 20 20 20 20 20 
 #sel_beta1_survey
  2.51256
 #sel_beta2_survey
