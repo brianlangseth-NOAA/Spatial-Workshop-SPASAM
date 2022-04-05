@@ -1,0 +1,16 @@
+Start only estimating Rave and q. Specify initN (not estimated) as exponential decay from R0. Population starts huge (so our initN must be huge) and crashes. F is specified and so initially I thought perhaps were just fishing the population to low levels, likely on the declining limb of the BH curve and so recruitment tanks and the population follows.
+
+Run recdevs estimates annual recruitment in an attempt to avoid the deterministic crash in recruitment I suspected above. This didn't fix the problem.
+
+Next I thought that maybe we were just fishing too hard with 7 fleets, so I fixed all annual F values to 0.02. This helped delay the crash, but didn't stop.
+
+At that point, I concluded that the problem must be some misspecification or oddity in recruitment because mortality was not causing the crash. After some sleuthing, I found that the estimated Rave was an order of magnitude smaller than the R0 we were given, and hence our initN was huge, recruitment relative to that start was nothing, and the population crashed.
+Run rescaleInitN reduced the specified initN values by an order of magnitude (divide by 10). This "fixed" the problem in the sense that the population doesn't crash and settles at a "reasonable" scale. I'm not sure if this problem is indicative of a scale issue in how we entered data (Brian checked this already and concluded all was well) or just that the model has instability of scale.
+
+I then tried estimating INitN at age in addition to Rave and q. The model estimated all N at age as zero, so this didn't work too well. 
+
+Run initdecay changed initN to equal exponential decay from estimated Rave, and this worked well enough.
+
+Run survest uses initdecay as a start but then estimates survey selectivity (2 parameter logistic). This worked well and we are actually getting the scale of survey biomass now!
+
+Last dat from 4/1/22 was estimate fleet selectivity. Didn't go well.
