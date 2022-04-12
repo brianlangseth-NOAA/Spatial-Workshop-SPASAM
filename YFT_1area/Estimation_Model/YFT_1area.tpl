@@ -727,6 +727,9 @@ PARAMETER_SECTION
   5darray selectivity(1,nps,1,nr,1,nyr,1,nag,1,nfl)
   4darray survey_selectivity_age(1,nps,1,nr,1,nag,1,nfls)  //param
   4darray selectivity_age(1,nps,1,nr,1,nag,1,nfl)
+
+  matrix survey_selectivity_temp(1,survfleet,1,nag) //For scaling to one. If dont have same number of fleets per region this formulation wont work
+  matrix selectivity_temp(1,fishfleet,1,nag) //For scaling to one. If dont have same number of fleets per region this formulation wont work
   
 //F parameters
   5darray F_fleet(1,nps,1,nr,1,nyr,1,nag,1,nfl) //derived quantity in which we likely have interest in precision
@@ -1794,8 +1797,17 @@ FUNCTION get_selectivity
                 {
                 selectivity(j,r,y,a,z)=selectivity_age_TRUE(j,r,a,z);
                 }
+                selectivity_temp(z,a) = selectivity(j,r,y,a,z); //temporary vector for rescaling to one for each fleet
                 }
               }
+              //Rescale to maximum selectivity for each fleet. Have to do this outside the original age loop to get maximum across ages
+              for (int a=1;a<=nages;a++)
+                {
+                  for (int z=1;z<=nfleets(j);z++)
+                    {
+                      selectivity(j,r,y,a,z) = selectivity(j,r,y,a,z)/max(selectivity_temp(z));
+                    }              
+                }
             }
           }
         }
@@ -1829,8 +1841,17 @@ FUNCTION get_selectivity
                 {
                 survey_selectivity(j,r,y,a,z)=survey_selectivity_age_TRUE(j,r,a,z);
                 }
+                survey_selectivity_temp(z,a) = survey_selectivity(j,r,y,a,z); //temporary vector for rescaling to one for each survey fleet
                 }
                }
+               //Rescale to maximum selectivity for each survey fleet. Have to do this outside the original age loop to get maximum across ages
+               for (int a=1;a<=nages;a++)
+                {
+                  for (int z=1;z<=nfleets_survey(j);z++)
+                    {
+                      survey_selectivity(j,r,y,a,z) = survey_selectivity(j,r,y,a,z)/max(survey_selectivity_temp(z));
+                    }              
+                }
              }
            }
           }
