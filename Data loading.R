@@ -467,6 +467,10 @@ om_rep[loc+1] <- paste(rep(om_rep[loc+1], dat$Nfleet), collapse = " ")
 loc <- grep("#select_switch_survey", om_rep)
 om_rep[loc+1] <- paste(rep(om_rep[loc+1], dat$Nsurveys), collapse = " ")
 
+#Indicate whether there is a mirror fleet
+new_val <- "0" #no mirroring
+om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
+
 
 ##
 #Biological data

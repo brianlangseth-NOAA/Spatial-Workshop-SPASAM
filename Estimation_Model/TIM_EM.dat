@@ -34,6 +34,8 @@
 2 2 1 2 2 2 2
 #select_switch_survey
 1
+#survey_mirror
+0
 #maturity_switch_equil
 0
 #SSB_type

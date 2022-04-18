@@ -101,6 +101,9 @@ DATA_SECTION
   //==0 input selectivity
   //==1 logistic selectivity based on input sel_beta1 and sel_beta2
   //==2 double logistic selectivity based on input sel_beta1, sel_beta2, sel_beta3 and sel_beta4
+  init_matrix survey_mirror(1,np,1,nfs)
+  //==0 dont mirror to fishery fleet
+  //>0 specifies fishery fleet to mirror. Need to set phase of survey selectivity to negative
 
  //determine how to estimate R0 when there are multiple regions within a population that have different vital rates
   init_number maturity_switch_equil
@@ -1824,23 +1827,32 @@ FUNCTION get_selectivity
             {
              for (int z=1;z<=nfleets_survey(j);z++)
                {
-                if(select_switch_survey(j,z)==2) //4 parameter double logistic selectivity
+                if(survey_mirror(j,z)==0) //no mirroring of survey fleet to fishery fleet
                 {
-                 survey_selectivity(j,r,y,a,z)=(1/(1+mfexp(-1*sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z)))))*(1-(1/(1+mfexp(-1*sel_beta3surv(j,r,z)*(a-(sel_beta2surv(j,r,z)+sel_beta4surv(j,r,z)))))));
-                 //survey_selectivity(j,r,y,a,z)=1/((1+mfexp(-sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z))))*(1+mfexp(-sel_beta3surv(j,r,z)*(a-sel_beta4surv(j,r,z)))));
+                  if(select_switch_survey(j,z)==2) //4 parameter double logistic selectivity
+                  {
+                   survey_selectivity(j,r,y,a,z)=(1/(1+mfexp(-1*sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z)))))*(1-(1/(1+mfexp(-1*sel_beta3surv(j,r,z)*(a-(sel_beta2surv(j,r,z)+sel_beta4surv(j,r,z)))))));
+                   //survey_selectivity(j,r,y,a,z)=1/((1+mfexp(-sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z))))*(1+mfexp(-sel_beta3surv(j,r,z)*(a-sel_beta4surv(j,r,z)))));
+                  }
+                  if(select_switch_survey(j,z)==1) //two parameter logistic selectivity
+                  {
+                   survey_selectivity(j,r,y,a,z)=1/(1+mfexp(-sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z)))); //
+                  }
+                  if(select_switch_survey(j,z)==0) //input selectivity at age constant by year
+                  {
+                  survey_selectivity(j,r,y,a,z)=input_survey_selectivity(j,r,a,z);
+                  }
+                  if(select_switch_survey(j,z)==-1) //input selectivity at age constant by year
+                  {
+                  survey_selectivity(j,r,y,a,z)=survey_selectivity_age_TRUE(j,r,a,z);
+                  }
                 }
-                if(select_switch_survey(j,z)==1) //two parameter logistic selectivity
+                
+                if(survey_mirror(j,z)>0) //mirror to fleet
                 {
-                 survey_selectivity(j,r,y,a,z)=1/(1+mfexp(-sel_beta1surv(j,r,z)*(a-sel_beta2surv(j,r,z)))); //
+                  survey_selectivity(j,r,y,a,z)=selectivity(j,r,y,a,survey_mirror(j,z));
                 }
-                if(select_switch_survey(j,z)==0) //input selectivity at age constant by year
-                {
-                survey_selectivity(j,r,y,a,z)=input_survey_selectivity(j,r,a,z);
-                }
-                if(select_switch_survey(j,z)==-1) //input selectivity at age constant by year
-                {
-                survey_selectivity(j,r,y,a,z)=survey_selectivity_age_TRUE(j,r,a,z);
-                }
+
                 survey_selectivity_temp(z,a) = survey_selectivity(j,r,y,a,z); //temporary vector for rescaling to one for each survey fleet
                 }
                }
