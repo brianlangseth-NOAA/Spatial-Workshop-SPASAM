@@ -5078,17 +5078,17 @@ REPORT_SECTION
   report<<"$F_pen_like"<<endl;
   report<<F_pen_like*wt_F_pen<<endl;
   report<<"$early_F_pen_like"<<endl;
-  report<<F_pen_like_early<<endl;
+  report<<F_pen_like_early*wt_F_pen<<endl;
   report<<"$M_pen_like"<<endl;
   report<<M_pen_like*wt_M_pen<<endl;
   report<<"$early_M_pen_like"<<endl;
-  report<<M_pen_like_early<<endl;
+  report<<M_pen_like_early*wt_M_pen<<endl;
   report<<"$Bpen_like"<<endl;
   report<<Bpen_like*wt_B_pen<<endl;
   report<<"$abund_dev_pen"<<endl;
   report<<init_abund_pen*wt_abund_pen<<endl;
   report<<"$Rave_pen"<<endl;
-  report<<Rave_pen<<endl;
+  report<<Rave_pen*wt_Rave_pen<<endl;
 
 //use these to determine which movement graphs to use in sim wrappers
   report<<"$ph_T_YR"<<endl;
