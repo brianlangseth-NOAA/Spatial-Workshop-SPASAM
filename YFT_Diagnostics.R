@@ -368,7 +368,7 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
   # Yield
   
   #need to fix this for fleets as areas 
-  Y.year<-data.frame(Flt=rep(c(1:fleets),each=nyrs),Year=rep(years,fleets),Estimated=as.vector(out$yield_fleet),Observed=as.vector(out$OBS_yield_fleet))
+  Y.year<-data.frame(Flt=rep(c(1:fleets),each=nyrs),Year=rep(years,fleets),Estimated=as.vector(out$yieldN_fleet),Observed=as.vector(out$OBS_yield_fleet))
   
   Y.year.plot<-melt(Y.year, id=c("Flt","Year"))
   #Fleet.a=rep(c(1:fleets),each=nyrs)
@@ -383,7 +383,7 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
     facet_wrap(~Flt)+
     scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","Observed"))+
     scale_linetype_manual(values=c(1,0),labels = c("Estimated","Observed"))+
-    ylab("Yield")+
+    ylab("Yield (N)")+
     diag_theme+
     theme(legend.position = c(1, 1), legend.justification = c(1,1))+
     ggtitle("Yield")
