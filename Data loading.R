@@ -21,7 +21,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #mod_loc is where you want to set up your new EM run
   
   #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
-  data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
+  #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
   data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data"
   master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
   mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
@@ -461,15 +461,25 @@ om_rep[(loc + 1)] <- new_val
 
 #Update selectivity switches to differ by fleet
 loc <- grep("#select_switch$", om_rep)
-om_rep[loc+1] <- paste(rep(om_rep[loc+1], dat$Nfleet), collapse = " ")
+om_rep[loc+1] <- c("2 2 1 2 2 2 2")
 
 #Update selectivity switches to differ by survey fleet
 loc <- grep("#select_switch_survey", om_rep)
-om_rep[loc+1] <- paste(rep(om_rep[loc+1], dat$Nsurveys), collapse = " ")
+om_rep[loc+1] <- "1"
 
 #Indicate whether there is a mirror fleet
-new_val <- "0" #no mirroring
+new_val <- "3" #mirroing fleet 3. 0 is no mirroring
 om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
+
+#If have mirror then turn off survey selectivity and set weight of survey age comp to zero
+if(new_val != "0"){
+  loc <- grep("#ph_sel_log_surv", om_rep)
+  om_rep[loc+1] <- "-2"
+  loc <- grep("#ph_sel_dubl_surv", om_rep)
+  om_rep[loc+1] <- "-5"
+  loc <- grep("#wt_srv_age", om_rep)
+  om_rep[loc+1] <- "0"
+}
 
 
 ##
@@ -500,6 +510,10 @@ om_rep[(loc + 1)] <- log(bdat$B0/1000) #from OM description this IS R0
 #DECISION - sigma r of 0.6
 loc <- grep("#sigma_recruit", om_rep)
 om_rep[(loc + 1)] <- 0.6 
+
+#Set recruitment deviations starting value to account for variability so that after bias correction values are 1
+loc <- grep("#Rdevs_start", om_rep)
+om_rep[(loc + 1)] <- 0.18 
 
 #Weight at age - #input_weight
 loc <- grep("#input_weight", om_rep)
@@ -550,6 +564,39 @@ loc <- grep("#abund_pen_switch", om_rep) #keep off
 om_rep[(loc+1)] <- 0
 loc <- grep("#wt_abund_pen", om_rep) #keep off
 om_rep[(loc+1)] <- 0.1
+
+
+##
+#Bounds
+##
+
+#Balance initial abundance bounds so that init_abund_devs in report become 1 if fixed (so they are set to their midpoint before exp)
+loc <- grep("#lb_init_dist", om_rep)
+om_rep[(loc+1)] <- -10
+loc <- grep("#ub_init_dist", om_rep)
+om_rep[(loc+1)] <- 10
+loc <- grep("#lb_init_abund", om_rep)
+om_rep[(loc+1)] <- -10
+loc <- grep("#ub_init_abund", om_rep)
+om_rep[(loc+1)] <- 10
+
+#Catchability - reduce lower bound
+loc <- grep("#lb_q", om_rep)
+om_rep[(loc+1)] <- -15
+
+#Selectivity parameters
+loc <- grep("lb_sel_beta", om_rep) #lower bounds for all fleets and surveys
+om_rep[loc] <- -5
+loc <- grep("ub_sel_beta", om_rep) #uppers bounds for all fleets and surveys
+om_rep[loc] <- 3
+loc <- grep("^#sel_beta1.*start$", om_rep) #start for fleet and survey
+om_rep[loc] <- 0
+loc <- grep("^#sel_beta2.*start$", om_rep) #start for fleet and survey
+om_rep[loc] <- 2
+loc <- grep("^#sel_beta3.*start$", om_rep) #start for fleet and survey
+om_rep[loc] <- -0.7
+loc <- grep("^#sel_beta4.*start$", om_rep) #start for fleet and survey
+om_rep[loc] <- 1
 
 
 
