@@ -189,14 +189,14 @@ alk[1,noentry[1]]=1 #set the first column to be 1 for the first age 1
 alk[dat$Nages,noentry[-1]]=1 #set the last columns to be 1 for the last age
 alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
 #Convert length comps to age comps
-#DECISION - assume OBS_catch_prop is blocked by year first for each fleet
+#DECISION - assume OBS_catch_prop is blocked in each year for all fleets (year 1 for all fleets, then year 2 for all fleets, etc.)
 agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
 agecomp_prop <- agecomp/rowSums(agecomp)
 agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy, agecomp_prop)
 #Put into om_rep file
 loc <- grep("#OBS_catch_prop$", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet, ncol = dat$Nages) #Set up for all years and fleets
-tmp_val[(dat$endyr * (agecomp_yr[,"FltSvy"] - 1) + agecomp_yr[,"Yr"]),] <- agecomp_yr[,-c(1,2)] #Assign for just the years and fleets in YFT data
+tmp_val[(dat$Nfleet * (agecomp_yr[,"Yr"] - 1) + agecomp_yr[,"FltSvy"]),] <- agecomp_yr[,-c(1,2)] #Assign for just the years and fleets in YFT data. Each year for all fleets. 
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
 
