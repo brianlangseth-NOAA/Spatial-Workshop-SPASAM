@@ -208,9 +208,6 @@ new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
 
-################################FltSvy has changed now###
-
-
 ####
 #Survey
 ####
@@ -252,7 +249,6 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #DECISION - What is NCPUEObs though?
 loc <- grep("#OBS_survey_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[cbind(dat$lencomp[dat$lencomp$FltSvy==3,]$Yr, dat$Nsurvey)] <- dat$lencomp[dat$lencomp$FltSvy==3,]$Nsamp #Assign for just the years and fleets in YFT data
 tmp_val[yrs_comp,] <- dat$lencomp[dat$lencomp$FltSvy==3 & dat$lencomp$Yr%in%yrs_comp,]$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
@@ -549,21 +545,21 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 #Penalty for recruitment being different from Rave_mean
 loc <- grep("#Rave_pen_switch", om_rep)
-om_rep[(loc+1)] <- 1
+om_rep[(loc + 1)] <- 1
 loc <- grep("#wt_Rave_pen", om_rep)
-om_rep[(loc+1)] <- 10
+om_rep[(loc + 1)] <- 10
 
 #Tagging weight to include tag likelihood 
 loc <- grep("#wt_tag", om_rep)
-om_rep[(loc+1)] <- 0
+om_rep[(loc + 1)] <- 0
 
 #Initial abundance set up and penalty for initial value at age being different from mean_N
 loc <- grep("#init_abund_switch", om_rep) #decaying from Rave
-om_rep[(loc+1)] <- 1
+om_rep[(loc + 1)] <- 1
 loc <- grep("#abund_pen_switch", om_rep) #keep off
-om_rep[(loc+1)] <- 0
+om_rep[(loc + 1)] <- 0
 loc <- grep("#wt_abund_pen", om_rep) #keep off
-om_rep[(loc+1)] <- 0.1
+om_rep[(loc + 1)] <- 0.1
 
 
 ##
@@ -572,31 +568,31 @@ om_rep[(loc+1)] <- 0.1
 
 #Balance initial abundance bounds so that init_abund_devs in report become 1 if fixed (so they are set to their midpoint before exp)
 loc <- grep("#lb_init_dist", om_rep)
-om_rep[(loc+1)] <- -10
+om_rep[(loc + 1)] <- -10
 loc <- grep("#ub_init_dist", om_rep)
-om_rep[(loc+1)] <- 10
+om_rep[(loc + 1)] <- 10
 loc <- grep("#lb_init_abund", om_rep)
-om_rep[(loc+1)] <- -10
+om_rep[(loc + 1)] <- -10
 loc <- grep("#ub_init_abund", om_rep)
-om_rep[(loc+1)] <- 10
+om_rep[(loc + 1)] <- 10
 
 #Catchability - reduce lower bound
 loc <- grep("#lb_q", om_rep)
-om_rep[(loc+1)] <- -15
+om_rep[(loc + 1)] <- -15
 
 #Selectivity parameters
 loc <- grep("lb_sel_beta", om_rep) #lower bounds for all fleets and surveys
-om_rep[loc] <- -5
+om_rep[(loc + 1)] <- -5
 loc <- grep("ub_sel_beta", om_rep) #uppers bounds for all fleets and surveys
-om_rep[loc] <- 3
+om_rep[(loc + 1)] <- 3
 loc <- grep("^#sel_beta1.*start$", om_rep) #start for fleet and survey
-om_rep[loc] <- 0
+om_rep[(loc + 1)] <- 0
 loc <- grep("^#sel_beta2.*start$", om_rep) #start for fleet and survey
-om_rep[loc] <- 2
+om_rep[(loc + 1)] <- 2
 loc <- grep("^#sel_beta3.*start$", om_rep) #start for fleet and survey
-om_rep[loc] <- -0.7
+om_rep[(loc + 1)] <- -0.7
 loc <- grep("^#sel_beta4.*start$", om_rep) #start for fleet and survey
-om_rep[loc] <- 1
+om_rep[(loc + 1)] <- 1
 
 
 
