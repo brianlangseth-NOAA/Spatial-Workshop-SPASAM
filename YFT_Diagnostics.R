@@ -12,6 +12,7 @@
 
 #load libraries
 library(ggplot2)
+library(ggforce)
 library(reshape2)
 library(dplyr)
 library(matrixStats)
@@ -97,7 +98,8 @@ EM_direct<-"C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Newest da
 #########################################################
 
 #plot and output function
-make.plots<-function(direct=EM_direct){ #run diagnostics plotting
+#optional plot.comps takes a long time (~45 minutes), optional plot.yearly.abund takes ~1 minutes
+make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = FALSE){ #run diagnostics plotting
   
   #Read in model .rep
   out<-readList(paste(EM_direct,paste0(EM_name,".rep"),sep="\\")) #read in .rep file
@@ -248,6 +250,22 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
     theme(legend.position = c(1, 1), legend.justification = c(1,1))+
     ggtitle("Initial Abundance")  
   
+  
+  #other years abundance - only applicable for one region
+  abund.at.age.long <- data.frame("Year" = rep(years,na), "Age" = rep(ages, each = nyrs), stack(data.frame(out$abund_at_age_AM))[1])
+  
+  for(i in 1:ceiling(nyrs/10)){
+    assign(paste0("yearly.ab",i),
+      ggplot(abund.at.age.long, aes(Age, values))+
+      geom_line(stat = "identity", lwd=line.wd)+
+      facet_wrap_paginate(~Year, ncol = 1, nrow = 10, page = i, scale = "free_y")+
+      ylab("Abundance")+
+      diag_theme+
+      ggtitle("Abundance at age over time"))
+  }
+    
+  
+  
   #################################
   # Total Biomass
   
@@ -388,6 +406,18 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
     theme(legend.position = c(1, 1), legend.justification = c(1,1))+
     ggtitle("Yield")
   
+  yield.p.zoomIn<-ggplot(Y.year.plot,aes(Year,value,shape=variable))+
+    geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
+    geom_point(size=2, alpha = 0.5)+
+    scale_shape_manual(values=c(NA,16),labels = c("Estimated","Observed"))+
+    facet_wrap(~Flt, scales = "free")+
+    scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","Observed"))+
+    scale_linetype_manual(values=c(1,0),labels = c("Estimated","Observed"))+
+    ylab("Yield (N)")+
+    diag_theme+
+    theme(legend.position = c(1, 1), legend.justification = c(1,1))+
+    ggtitle("Yield Zoomed In")+
+    coord_cartesian(ylim=c(0,7500))
   
   # calculate residuals
   
@@ -525,6 +555,48 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
     fishery.long<-data.frame(fishery.comps.resid,resid=stack(fishery.prop.resid)[1])
     names(fishery.long)[names(fishery.long)=="values"]="value"
     #fishery.long<-melt(fishery.comps.resid,id.vars=c("Year","Flt"))
+    
+    ###
+    #Add plot of fit to overall comp data
+    #DECISION - Right now combined years based on consistent Nsamp of 5, but should it be actual comp?
+    fishery.long.obs <- data.frame(fishery.comps.resid, stack(data.frame(out$OBS_catch_prop))[1])
+    fishery.long.exp <- data.frame(fishery.comps.resid, stack(data.frame(out$EST_catch_age_fleet_prop))[1])
+
+    fishery.long.obs.prop <- 
+      fishery.long.obs %>%
+      group_by(Flt) %>%
+      mutate("prop" = values/sum(values))
+    
+    #DECISION - Currently, this is the aggregate across all years, not just the years with observations
+    #May want to do years with just observations
+    fishery.long.exp.prop <- 
+      fishery.long.exp %>%
+      group_by(Flt) %>%
+      mutate("prop" = values/sum(values))
+    
+    agg.fishery.comp.plot <- 
+      ggplot() +
+      geom_bar(data = fishery.long.obs.prop, aes(variable,prop, fill = "gray"), stat = "Identity") +
+      geom_line(data = aggregate(prop~Flt+variable, fishery.long.exp.prop, sum), aes(variable, prop, color = "red"), lwd=line.wd) +
+      facet_wrap(~Flt, scale = "free") +
+      scale_color_manual(values = c(e.col),labels = c("Estimated"))+
+      scale_fill_manual(values = c("gray35"),labels = c("Observed"))+
+      ylab("Proportion")+
+      xlab("Ages")+
+      ggtitle("Catch comps aggregated across years")+
+      diag_theme+
+      theme(legend.position = c(0.5, 0.15),
+            legend.spacing.y = unit(0.01,"cm"),
+            legend.text = element_text(size = 12))
+    
+    ###
+    #Add plot of years/fleets with comps data avilable
+    comp.data.avail <- 
+      ggplot(data = fishery.long.obs[fishery.long.obs$values>0, ], aes(x = Year, y = Flt))+
+      geom_point(shape = 1, size = 2)+
+      ylab("Fleet")+
+      xlab("Year")+
+      ggtitle("Years with comp data by fleet")
   }
   
   
@@ -559,6 +631,28 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
           plot.title=element_text(size=11))+
     #theme(legend.title = element_blank())+
     theme(strip.text.x = element_text(size = 10, colour = "black", face="bold"))
+  
+
+  #yearly fishery age comps
+  for(i in 1:ceiling(nyrs/5)){
+    assign(paste0("yr.fishery.comp.plot",i), 
+      ggplot() +
+      geom_bar(data = fishery.long.obs.prop, aes(variable, values, fill = "gray"), stat = "Identity") +
+      geom_line(data = fishery.long.exp.prop, aes(variable, values, color = "red"), lwd=line.wd) +
+      facet_wrap_paginate(~Year+Flt, ncol = 7, nrow = 5, page = i)+
+      ylab("Proportion")+
+      xlab("Ages")+
+      ggtitle("Catch comps by year (rows - top number) by fleet (columns - bottom number)")+
+      labs(fill = "",
+           color = "",
+           x = NULL,
+           y = NULL)+
+      scale_color_manual(values = c(e.col),labels = c("Estimated"))+
+      scale_fill_manual(values = c("gray35"),labels = c("Observed"))+
+      diag_theme)
+  }
+  
+
   
   
 ##############################################
@@ -614,9 +708,31 @@ make.plots<-function(direct=EM_direct){ #run diagnostics plotting
   
   grid.arrange(ncol=1,yield.p,Y.resid.plot)
   
+  grid.arrange(ncol=1,yield.p.zoomIn)
+  
   grid.arrange(ncol=1,survey.p,Surv.resid.plot)
   
-  grid.arrange(ncol=1,fishery.comp.plot,survey.comp.plot)
+  grid.arrange(ncol=1, fishery.comp.plot,survey.comp.plot)
+  
+  grid.arrange(ncol=1, agg.fishery.comp.plot)
+  
+  grid.arrange(ncol=1, comp.data.avail)
+  
+  if(plot.comps){  
+    for(i in 1:ceiling(nyrs/5)){
+      grid.arrange(ncol=1, get(paste0("yr.fishery.comp.plot",i)))
+    }
+  }
+  
+  if(plot.yearly.abund){
+    for(i in 1:ceiling(nyrs/10)){
+      grid.arrange(ncol=1, get(paste0("yearly.ab",i)))
+    }
+  }
+
+  
+
+  
   
   ################################################
   ###############################################
