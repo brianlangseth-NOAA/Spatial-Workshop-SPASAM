@@ -609,3 +609,28 @@ file.copy(from = file.path(mod_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.p
 system.time({
 invisible(shell(paste0(mod_name,".exe"," -nox -ind"), wait=T))
 })
+
+
+##--------- If want to remove years of data use the following ---------##
+
+source("C:/Users/Brian.Langseth/Desktop/Spatial-Workshop-SPASAM/Remove_data_years.R")
+
+#Read in existing model .dat file
+dir <- "C:\\Users\\Brian.Langseth\\Desktop\\test\\Newest tagging data\\explorations"
+setwd(file.path(dir, "20_no0catch"))
+new_dat <- remove_years(80)
+new_folder <- "21_no0catch_short80"
+writeLines(new_dat, file.path(dir, new_folder, paste0("YFT_1area.dat")))
+#Copy over .exe and .tpl files
+file.copy(from = file.path("YFT_1area.exe"), to=file.path(dir, new_folder, paste0("YFT_1area.exe"))) #Will return FALSE if files already exist
+file.copy(from = file.path("YFT_1area.tpl"), to=file.path(dir, new_folder, paste0("YFT_1area.tpl"))) #Will return FALSE if files already exist
+#Run script
+setwd(file.path(dir, new_folder))
+system.time({
+  invisible(shell(paste0("YFT_1area.exe"," -nox -ind"), wait=T))
+})
+
+
+
+
+
