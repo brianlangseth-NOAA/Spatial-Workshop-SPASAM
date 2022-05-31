@@ -567,8 +567,8 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
       group_by(Flt) %>%
       mutate("prop" = values/sum(values))
     
-    #DECISION - Currently, this is the aggregate across all years, not just the years with observations
-    #May want to do years with just observations
+    #Currently, this is the aggregate across all years, not just the years with observations
+    #This is not the plot that is output
     fishery.long.exp.prop <- 
       fishery.long.exp %>%
       group_by(Flt) %>%
@@ -583,11 +583,36 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
       scale_fill_manual(values = c("gray35"),labels = c("Observed"))+
       ylab("Proportion")+
       xlab("Ages")+
-      ggtitle("Catch comps aggregated across years")+
+      ggtitle("Catch comps aggregated across ALL years")+
       diag_theme+
       theme(legend.position = c(0.5, 0.15),
             legend.spacing.y = unit(0.01,"cm"),
             legend.text = element_text(size = 12))
+    
+    #DECISION - This is aggregated across only those years that have observations. This is the plot outputted
+    obs.yr.flt <- unique(fishery.long.obs.prop[which(fishery.long.obs.prop$values>0),c("Year","Flt")]) %>% mutate("obs" = 1)
+    fishery.long.exp.prop.subset <- 
+      fishery.long.exp %>%
+      group_by(Flt) %>%
+      left_join(obs.yr.flt) %>%
+      filter(obs == 1) %>%
+      mutate("prop" = values/sum(values))
+    
+    agg.fishery.comp.plot.subset <- 
+      ggplot() +
+      geom_bar(data = fishery.long.obs.prop, aes(variable,prop, fill = "gray"), stat = "Identity") +
+      geom_line(data = aggregate(prop~Flt+variable, fishery.long.exp.prop.subset, sum), aes(variable, prop, color = "red"), lwd=line.wd) +
+      facet_wrap(~Flt, scale = "free") +
+      scale_color_manual(values = c(e.col),labels = c("Estimated"))+
+      scale_fill_manual(values = c("gray35"),labels = c("Observed"))+
+      ylab("Proportion")+
+      xlab("Ages")+
+      ggtitle("Catch comps aggregated across years with observed data")+
+      diag_theme+
+      theme(legend.position = c(0.5, 0.15),
+            legend.spacing.y = unit(0.01,"cm"),
+            legend.text = element_text(size = 12))
+    
     
     ###
     #Add plot of years/fleets with comps data avilable
@@ -632,7 +657,6 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     #theme(legend.title = element_blank())+
     theme(strip.text.x = element_text(size = 10, colour = "black", face="bold"))
   
-
   #yearly fishery age comps
   for(i in 1:ceiling(nyrs/5)){
     assign(paste0("yr.fishery.comp.plot",i), 
@@ -714,7 +738,7 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
   
   grid.arrange(ncol=1, fishery.comp.plot,survey.comp.plot)
   
-  grid.arrange(ncol=1, agg.fishery.comp.plot)
+  grid.arrange(ncol=1, agg.fishery.comp.plot.subset)
   
   grid.arrange(ncol=1, comp.data.avail)
   
