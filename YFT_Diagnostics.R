@@ -657,6 +657,44 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     #theme(legend.title = element_blank())+
     theme(strip.text.x = element_text(size = 10, colour = "black", face="bold"))
   
+  
+  #Add a bubble plot of comps in years where observations are
+  fishery.long.bubble <- fishery.long[fishery.long.obs$values>0,]
+  fishery.long.bubble$col = as.factor(fishery.long.bubble$value<0)
+    
+  fishery.comp.plot.bubble<-
+    ggplot(fishery.long.bubble[fishery.long.bubble$Flt %in% c(1:3),], aes(x = Year, y = as.numeric(variable), size = abs(value), shape = col)) + 
+    geom_point(alpha = 0.7) +
+    scale_size_area(max_size = 5, trans = "identity", name="Residual") +
+    scale_shape_manual(values = c(19, 1), labels = c("Obs-Exp > 0", "Obs-Exp < 0")) +
+    facet_grid(Flt~.) +
+    labs(shape = "Direction")+
+    labs(x="Age", y="Year", title="Fishery Age Comp Residuals Fleets") +
+    theme_bw() + 
+    theme(axis.text.x=element_text(size=9, angle=0, vjust=0.3),
+          axis.text.y=element_text(size=9),
+          plot.title=element_text(size=11),
+          legend.position = "bottom") +
+    #theme(legend.title = element_blank())+
+    theme(strip.text.x = element_text(size = 10, colour = "black", face="bold"))
+  
+  fishery.comp.plot.bubble2<-
+    ggplot(fishery.long.bubble[fishery.long.bubble$Flt %in% c(4:7),], aes(x = Year, y = as.numeric(variable), size = abs(value), shape = col)) + 
+    geom_point(alpha = 0.7) +
+    scale_size_area(max_size = 5, trans = "identity", name="Residual") +
+    scale_shape_manual(values = c(19, 1), labels = c("Obs-Exp > 0", "Obs-Exp < 0")) +
+    facet_grid(Flt~.) +
+    labs(shape = "Direction")+
+    labs(x="Age", y="Year", title="Fishery Age Comp Residuals Fleets") +
+    theme_bw() + 
+    theme(axis.text.x=element_text(size=9, angle=0, vjust=0.3),
+          axis.text.y=element_text(size=9),
+          plot.title=element_text(size=11),
+          legend.position = "bottom") +
+    #theme(legend.title = element_blank())+
+    theme(strip.text.x = element_text(size = 10, colour = "black", face="bold"))
+  
+
   #yearly fishery age comps
   for(i in 1:ceiling(nyrs/5)){
     assign(paste0("yr.fishery.comp.plot",i), 
@@ -737,6 +775,10 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
   grid.arrange(ncol=1,survey.p,Surv.resid.plot)
   
   grid.arrange(ncol=1, fishery.comp.plot,survey.comp.plot)
+  
+  grid.arrange(ncol=1, fishery.comp.plot.bubble)
+  
+  grid.arrange(ncol=1, fishery.comp.plot.bubble2)
   
   grid.arrange(ncol=1, agg.fishery.comp.plot.subset)
   
