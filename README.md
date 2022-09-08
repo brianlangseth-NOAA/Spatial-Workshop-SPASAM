@@ -12,4 +12,4 @@ Daniel R. Goethel Aaron M. Berger Katelyn Bosley, et al.
 
 UPDATE Oct, 2021
 
-During the Spatial Assessment Modeling Workshop simulations (see https://github.com/carenbarcelo-NOAA/Spatial-Assessment-Modeling-Workshop) we noticed that the Estimation model .dat file does not aligh with the .tpl nor the operating model output. We updated the .tpl and the .exe to match the output from the operation model.
+During the Spatial Assessment Modeling Workshop simulations (see https://github.com/aaronmberger-nwfsc/Spatial-Assessment-Modeling-Workshop) we noticed that the Estimation model .dat file does not aligh with the .tpl nor the operating model output. We updated the .tpl and the .exe to match the output from the operation model.
