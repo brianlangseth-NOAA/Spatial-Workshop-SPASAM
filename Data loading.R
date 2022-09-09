@@ -44,8 +44,19 @@ load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
 dat <- dat_1A_4
 bdat <- biol_dat 
 mod_name <- "YFT_1area"
-om_rep <- mungeData(mod_name, reduce = NULL, run = TRUE)
+om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
 
+
+#One area with 100 runs - ESS_05 is the base
+load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
+bdat <- biol_dat #this is only available in the single dataset
+load(file.path(data_loc,'YFT_1area_observations_1_100_ESS_05.RData'))
+for(i in 1:100){
+  dat <- get(paste0("dat_1A_",i))
+  mod_name <- paste0("YFT_1area_100sets",i)
+  om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
+  cat(paste0("\n Data set",i),"\n ")
+}
 
 
 ########################################################################################
