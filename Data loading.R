@@ -7,13 +7,15 @@ library(tidyr)
 if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #data_loc is where you have your YFT data stored (have to clone repo from github)
   #master_loc is where the base level OM and EM reside
+  #code_loc is where your code scripts reside (the github repo)
   #mod_loc is where you want to set up your new EM run
   
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
   data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data"
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
-  mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
+  code_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
+  mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\test"
 }
 if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #data_loc is where you have your YFT data stored (have to clone repo from github)
@@ -24,6 +26,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
   data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data"
   master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
+  code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
   mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
 }
 
@@ -31,25 +34,39 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 
 
 ######################################################
-#Read in data from github
+#Read in data from cloned github repository
+#Munge the data and then run the script
+#DECISION - using generalized tpl, if want a specific one need to adjust
 ######################################################
 
 #One area - can adjust for other datasets
 load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
 dat <- dat_1A_4
 bdat <- biol_dat 
+mod_name <- "YFT_1area"
+om_rep <- mungeData(mod_name, reduce = NULL, run = TRUE)
 
 
 
-######################################################
+########################################################################################
+#-------FUNCTION TO GET YFT DATA INTO THE PROPER FORMAT FROM THE ORIGINAL OM FILE------#
+########################################################################################
+#mod_name: the name of the model (name of the .dat, .tpl, and .exe folders)
+#reduce: whether years of data should be removed, if so then enter the number of years
+#run: whether to run the EM
+
+mungeData <- function(mod_name, reduce = NULL, run = FALSE){
+
+
+####################
 #Set up OM.rep file
-######################################################
+####################
 
 ####
 #Set up folder for new model run
 ####
 
-mod_name <- "YFT_1area"
+mod_name <- mod_name
 
 if(!dir.exists(file.path(mod_loc, mod_name))){
   dir.create(file.path(mod_loc, mod_name))
@@ -60,14 +77,17 @@ if(!dir.exists(file.path(mod_loc, mod_name))){
 
 
 ####
-#Run the OM to get the .rep file - Only need to do this once (if haven't, uncomment the commented out lines)
+#Run the OM to get the .rep file - Only need to do this once (will run if no files currently are in OM folder)
 ####
 setwd(file.path(mod_loc, mod_name, "Operating_Model"))
-# file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
-# file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
-# file.copy(from = file.path(mod_loc, "Panmictic", "Operating_Model", "TIM_OM_all.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
-# invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
-# file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
+if(length(list.files())==0){
+  file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
+  file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
+  file.copy(from = file.path(mod_loc, "Panmictic", "Operating_Model", "TIM_OM_all.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
+  invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
+  file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
+  print("OM run completed")
+}
 
 #Access the .rep file to then enter the YFT data
 om_rep <- readLines("TIM_OM.rep",n=-1)
@@ -99,9 +119,9 @@ check_entry = function(loc, loc_end, new_entry){
 
 
 
-#####################################################
-#Data Munging!!!!
-#####################################################
+####################
+##Data Munging!!!!
+####################
 
 #The following element may be able to be removed after updating SIM_TIM.R (see issue 17)
 
@@ -449,6 +469,7 @@ tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries (TO DO: the 3 e
 new_val <- paste(tmp_val, collapse = " ")
 om_rep[(loc + 1)] <- new_val
 
+
 ##
 #Selectivity
 ##
@@ -594,43 +615,70 @@ om_rep[(loc + 1)] <- -0.7
 loc <- grep("^#sel_beta4.*start$", om_rep) #start for fleet and survey
 om_rep[(loc + 1)] <- 1
 
+##Done Munging##
 
-
-##------------------------Done Munging--------------------------------------------##
 
 ####
-#Save YFT model as .dat file, copy .tpl over, run model
+#Save YFT model as .dat file, copy .tpl over
 ####
 
 setwd(file.path(mod_loc, mod_name, "Estimation_Model"))
 writeLines(om_rep, paste0(mod_name,".dat"))
-file.copy(from = file.path(mod_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
-#Ensure there is an .exe file. May need to create one manually
-system.time({
-invisible(shell(paste0(mod_name,".exe"," -nox -ind"), wait=T))
-})
+file.copy(from = file.path(code_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
 
 
-##--------- If want to remove years of data use the following ---------##
+####
+#If want to remove years from the data
+####
 
-source("C:/Users/Brian.Langseth/Desktop/Spatial-Workshop-SPASAM/Remove_data_years.R")
-
-#Read in existing model .dat file
-dir <- "C:\\Users\\Brian.Langseth\\Desktop\\test\\Newest tagging data\\explorations"
-setwd(file.path(dir, "20_no0catch"))
-new_dat <- remove_years(80)
-new_folder <- "21_no0catch_short80"
-writeLines(new_dat, file.path(dir, new_folder, paste0("YFT_1area.dat")))
-#Copy over .exe and .tpl files
-file.copy(from = file.path("YFT_1area.exe"), to=file.path(dir, new_folder, paste0("YFT_1area.exe"))) #Will return FALSE if files already exist
-file.copy(from = file.path("YFT_1area.tpl"), to=file.path(dir, new_folder, paste0("YFT_1area.tpl"))) #Will return FALSE if files already exist
-#Run script
-setwd(file.path(dir, new_folder))
-system.time({
-  invisible(shell(paste0("YFT_1area.exe"," -nox -ind"), wait=T))
-})
+if(!is.null(reduce)) { #for removing years from the data
+  source(file.path(code_loc,"Remove_data_years.R"))
+  #Read in existing model .dat file
+  new_dat <- remove_years(reduce, mod_name)
+  writeLines(new_dat, file.path(getwd(), paste0(mod_name,".dat")))
+  om_rep <- new_dat
+  print(paste("First", reduce, "years of data removed"))
+}
 
 
+####
+#Run model if desired - DECISION: currently running with nohess
+####
+
+if(run){
+  #Run script - Ensure there is an .exe file. May need to create one manually and rename it
+  system.time({
+    invisible(shell(paste0(mod_name, ".exe"," -nohess -nox -ind"), wait=T))
+    #invisible(shell(paste0(mod_name, ".exe"," -nox -ind"), wait=T))
+  })
+}
+
+return(om_rep)
+
+} #End of mungeData function
+
+
+
+##########################################################################################
+##--------- If want to remove years of data from a model already ran use the following ---------##
+##########################################################################################
+
+# source(file.path(code_loc,"Remove_data_years.R"))
+# 
+# #Read in existing model .dat file
+# dir <- "C:\\Users\\Brian.Langseth\\Desktop\\test\\Newest tagging data\\explorations"
+# setwd(file.path(dir, "20_no0catch"))
+# new_dat <- remove_years(80)
+# new_folder <- "21_no0catch_short80"
+# writeLines(new_dat, file.path(dir, new_folder, paste0("YFT_1area.dat")))
+# #Copy over .exe and .tpl files
+# file.copy(from = file.path("YFT_1area.exe"), to=file.path(dir, new_folder, paste0(mod_name, ".exe"))) #Will return FALSE if files already exist
+# file.copy(from = file.path("YFT_1area.tpl"), to=file.path(dir, new_folder, paste0(mod_name, ".tpl"))) #Will return FALSE if files already exist
+# #Run script
+# setwd(file.path(dir, new_folder))
+# system.time({
+#   invisible(shell(paste0(mod_name, ".exe"," -nohess -nox -ind"), wait=T))
+# })
 
 
 
