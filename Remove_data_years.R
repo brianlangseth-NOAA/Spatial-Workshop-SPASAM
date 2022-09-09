@@ -1,9 +1,9 @@
 #Functions to remove no_yrs of data from the beginning of the time series
 #Pulls from .dat file in current directory
 
-remove_years <- function(no_yrs){
+remove_years <- function(no_yrs,mod_name){
   
-  em_dat <- readLines("YFT_1area.dat",n=-1)
+  em_dat <- readLines(paste0(mod_name,".dat"),n=-1)
   
   #Number of fleets (for reference)
   loc <- grep("#nfleets_EM", em_dat)
