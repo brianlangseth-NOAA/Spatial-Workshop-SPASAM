@@ -9,6 +9,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #master_loc is where the base level OM and EM reside
   #code_loc is where your code scripts reside (the github repo)
   #mod_loc is where you want to set up your new EM run
+  #EM_loc is the folder you want to copy your .tpl from
   
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
@@ -16,6 +17,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   code_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\test"
+  tpl_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Shortened105_estSel_Rdevs"
 }
 if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #data_loc is where you have your YFT data stored (have to clone repo from github)
@@ -28,6 +30,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
   code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
   mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
+  tpl_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Shortened105_estSel_Rdevs"
 }
 
 #FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE
@@ -36,7 +39,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 ######################################################
 #Read in data from cloned github repository
 #Munge the data and then run the script
-#DECISION - using generalized tpl, if want a specific one need to adjust
+#DECISION - using "Shortened105_estSel_Rdevs" tpl, if want a specific one need to adjust
 ######################################################
 
 #One area - can adjust for other datasets
@@ -54,7 +57,7 @@ load(file.path(data_loc,'YFT_1area_observations_1_100_ESS_05.RData'))
 for(i in 1:100){
   dat <- get(paste0("dat_1A_",i))
   mod_name <- paste0("YFT_1area_100sets",i)
-  om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
+  om_rep <- mungeData(mod_name, reduce = 105, run = FALSE)
   cat(paste0("\n Data set",i),"\n ")
 }
 
@@ -630,13 +633,13 @@ om_rep[(loc + 1)] <- 1
 
 
 ####
-#Save YFT model as .dat file, copy .tpl over
+#Save YFT model as .dat file, copy .tpl over from tpl_loc
 ####
 
 setwd(file.path(mod_loc, mod_name, "Estimation_Model"))
 writeLines(om_rep, paste0(mod_name,".dat"))
-file.copy(from = file.path(code_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
-
+file.copy(from = file.path(tpl_loc, "YFT_1area.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
+shell(paste0("admb ",mod_name)) #build .exe from the .tpl
 
 ####
 #If want to remove years from the data
