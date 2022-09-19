@@ -9,6 +9,10 @@ remove_years <- function(no_yrs,mod_name){
   loc <- grep("#nfleets_EM", em_dat)
   orig_flt <- as.numeric(em_dat[(loc+1)])
   
+  #Number of OM fleets (for reference)
+  loc <- grep("#nfleets_OM", em_dat)
+  OM_flt <- as.numeric(em_dat[(loc+1)])
+  
   #Number of ages (for reference)
   orig_ages <- as.numeric(em_dat[(2)])
   
@@ -105,7 +109,7 @@ remove_years <- function(no_yrs,mod_name){
   
   #catch_at_age_fleet_prop
   loc <- grep("#catch_at_age_fleet_prop", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs*orig_flt, orig_yrs, prop = TRUE)
+  em_dat <- shorten_vector(em_dat, loc, no_yrs*OM_flt, orig_yrs, prop = TRUE)
   #em_dat[(loc+1):(loc+((orig_yrs-no_yrs)*orig_flt))] <- shorten_vector(em_dat, loc, no_yrs*orig_flt, orig_yrs, prop = TRUE)
   
   #yield_fleet
