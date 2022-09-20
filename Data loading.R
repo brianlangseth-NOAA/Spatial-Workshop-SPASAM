@@ -1,5 +1,5 @@
 library(tidyr)
-
+library(tidyverse)
 ####
 #User directories
 ####
@@ -9,7 +9,6 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #master_loc is where the base level OM and EM reside
   #code_loc is where your code scripts reside (the github repo)
   #mod_loc is where you want to set up your new EM run
-  #EM_loc is the folder you want to copy your .tpl from
   
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
@@ -17,7 +16,6 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   code_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\test"
-  tpl_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Shortened105_estSel_Rdevs"
 }
 if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #data_loc is where you have your YFT data stored (have to clone repo from github)
@@ -30,7 +28,6 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
   code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
   mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
-  tpl_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Shortened105_estSel_Rdevs"
 }
 
 #FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE
@@ -39,7 +36,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 ######################################################
 #Read in data from cloned github repository
 #Munge the data and then run the script
-#DECISION - using "Shortened105_estSel_Rdevs" tpl, if want a specific one need to adjust
+#DECISION - using generalized tpl, if want a specific one need to adjust
 ######################################################
 
 #One area - can adjust for other datasets
@@ -47,7 +44,7 @@ load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
 dat <- dat_1A_4
 bdat <- biol_dat 
 mod_name <- "YFT_1area"
-om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
+om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE,fleetcombo=FALSE)
 
 
 #One area with 100 runs - ESS_05 is the base
@@ -57,7 +54,7 @@ load(file.path(data_loc,'YFT_1area_observations_1_100_ESS_05.RData'))
 for(i in 1:100){
   dat <- get(paste0("dat_1A_",i))
   mod_name <- paste0("YFT_1area_100sets",i)
-  om_rep <- mungeData(mod_name, reduce = 105, run = FALSE)
+  om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
   cat(paste0("\n Data set",i),"\n ")
 }
 
@@ -68,9 +65,87 @@ for(i in 1:100){
 #mod_name: the name of the model (name of the .dat, .tpl, and .exe folders)
 #reduce: whether years of data should be removed, if so then enter the number of years
 #run: whether to run the EM
+#fleetcombo: do you want combine some fleets (TRUE or FALSE); define fleet combos in newfleets list below
 
-mungeData <- function(mod_name, reduce = NULL, run = FALSE){
+mungeData <- function(mod_name, reduce = NULL, run = FALSE,fleetcombo=FALSE){
 
+###########
+#if desired then combine data to reduce number of fleets
+###########
+if(fleetcombo){
+  newfleets=list(c(1,2,7),3,c(4,6),5)
+  
+  #quick loop to sum catches etc.
+  for(f in 1:length(newfleets)){
+    if(f==1){
+      #sum total catches by desired fleet combos
+      newcatch=data.frame(rowSums(dat$catch[newfleets[f][[1]]]))
+      colnames(newcatch)=paste(newfleets[f][[1]],collapse="")
+      
+      #combine len comps over desired fleets
+      newlencomp <-
+        dat$lencomp[which(dat$lencomp$FltSvy %in% newfleets[f][[1]]),] %>% 
+        group_by(Yr) %>% 
+        summarise(across(l10:l200,sum))
+      newlencomp$FltSvy=paste(newfleets[f][[1]],collapse="")
+      
+    } else {
+      newcatch=cbind(newcatch,rowSums(dat$catch[newfleets[f][[1]]]))
+      colnames(newcatch)[f]=paste(newfleets[f][[1]],collapse="")
+      
+      #combine lencomps
+      tempcomp <-
+        dat$lencomp[which(dat$lencomp$FltSvy %in% newfleets[f][[1]]),] %>% 
+        group_by(Yr) %>% 
+        summarise(across(l10:l200,sum))
+      tempcomp$FltSvy=paste(newfleets[f][[1]],collapse="")
+      newlencomp=rbind(newlencomp,tempcomp)
+      
+    } #end else
+  } #end for loop
+  sel_switch=paste(ifelse(colnames(newcatch)[1:length(newfleets)]=="3",1,2),collapse=" ") #define selectivity by fleet
+  newcatch=cbind(newcatch,year=dat$catch$year) #add year and seas column to new catch to match original dat
+  newcatch=cbind(newcatch,seas=dat$catch$seas)
+  newse_log_catch=dat$se_log_catch[1:length(newfleets)] #define catch se for new catch file
+  nfleets_EM=length(newfleets) #redefine number of fleets
+  selbeta1=rep(1.34126,nfleets_EM) #starting selectivity parameter values for the correct number of fleets
+  selbeta2=rep(3.79525,nfleets_EM)
+  selbeta3=rep(-0.6,nfleets_EM)
+  selbeta4=rep(20,nfleets_EM)
+  #add some columns to new lencomp and change some to numeric to match original dat
+  newlencomp$FltSvy=as.numeric(newlencomp$FltSvy)
+  newlencomp$Seas=1
+  newlencomp$Gender=0
+  newlencomp$Part=0
+  newlencomp$Nsamp=5
+  
+  #replace values in dat with combined fleet data
+  dat$catch=newcatch
+  dat$se_log_catch=newse_log_catch
+  dat$lencomp=data.frame(newlencomp)
+  dat$Nfleet=nfleets_EM
+  
+} else { #end if fleetcombo
+  newfleets=list(c(1),c(2),c(3),c(4),c(5),c(6),c(7))
+  sel_switch=c("2 2 1 2 2 2 2")
+  nfleets_EM=7
+  selbeta1=rep(1.34126,nfleets_EM)
+  selbeta2=rep(3.79525,nfleets_EM)
+  selbeta3=rep(-0.6,nfleets_EM)
+  selbeta4=rep(20,nfleets_EM)
+  
+} #end else for if fleetcombo
+  
+#When I combine fleets they don't equal a simple sequence, which broke some Langseth code. This is needed for my solution.
+  for(x in 1:length(newfleets)){
+    if(x==1){
+      FltSvyB=ifelse(dat$lencomp[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,999)
+    } else {
+      FltSvyB=ifelse(dat$lencomp[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,FltSvyB)
+    }
+  }
+  dat$lencomp=cbind(dat$lencomp,FltSvyB)
+  
 
 ####################
 #Set up OM.rep file
@@ -151,7 +226,7 @@ om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
 #Catch - OBS_yield_fleet
 loc <- grep("#OBS_yield_fleet$", om_rep)
 new_val <- tidyr::unite(
-  round(dat$catch[,1:7], 3), #DECISION - round to 3 decimals
+  round(dat$catch[,1:nfleets_EM], 3), #DECISION - round to 3 decimals
   sep = " ", 
   col = "new_val")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val$new_val
@@ -224,20 +299,37 @@ alk[dat$Nages,noentry[-1]]=1 #set the last columns to be 1 for the last age
 alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
 #Convert length comps to age comps
 #DECISION - assume OBS_catch_prop is blocked in each year for all fleets (year 1 for all fleets, then year 2 for all fleets, etc.)
-agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
+#agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
+agecomp <- as.matrix(dat$lencomp[which(colnames(dat$lencomp) %in% paste0("l",seq(10,200,by=5)))]) %*% t(alk)
 agecomp_prop <- agecomp/rowSums(agecomp)
 agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy, agecomp_prop)
+for(x in 1:length(newfleets)){
+  if(x==1){
+  FltSvyB=ifelse(agecomp_yr[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,999)
+  } else {
+    FltSvyB=ifelse(agecomp_yr[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,FltSvyB)
+  }
+}
+agecomp_yr=cbind(agecomp_yr,FltSvyB)
+
 #Put into om_rep file
 loc <- grep("#OBS_catch_prop$", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet, ncol = dat$Nages) #Set up for all years and fleets
-tmp_val[(dat$Nfleet * (agecomp_yr[,"Yr"] - 1) + agecomp_yr[,"FltSvy"]),] <- agecomp_yr[,-c(1,2)] #Assign for just the years and fleets in YFT data. Each year for all fleets. 
+tmp_val[(dat$Nfleet * (agecomp_yr[,"Yr"] - 1) + agecomp_yr[,"FltSvyB"]),] <- agecomp_yr[,-which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy"))] #Assign for just the years and fleets in YFT data. Each year for all fleets. 
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
+#Check if number of entries dont match up. Append new lines or remove some lines before replacing
+#TO DO (for later): adjust add lines to automatically remove lines if need be
+entries <- grep("#", om_rep)
+add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
+if(add_lines<0){
+  om_rep <- om_rep[-((loc+1):(loc-1*add_lines))] #remove lines so element equals the length of entry being added
+}
 om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nfleet) #Set up for all years and fleets
-tmp_val[cbind(dat$lencomp$Yr, dat$lencomp$FltSvy)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
+tmp_val[cbind(dat$lencomp$Yr, dat$lencomp$FltSvyB)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
@@ -272,8 +364,8 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 loc <- grep("#OBS_survey_prop$", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr*dat$Nsurveys, ncol = dat$Nages) #Set up for all years and surveys
 #years of comp data for fleet 3 that overlap with years of CPUE data
-yrs_comp <- agecomp_yr[agecomp_yr[,"FltSvy"]==3,"Yr"][agecomp_yr[agecomp_yr[,"FltSvy"]==3,"Yr"] %in% dat$CPUE$year] 
-tmp_val[yrs_comp,] <- agecomp_yr[agecomp_yr[,"FltSvy"] == 3 & agecomp_yr[,"Yr"]%in%yrs_comp, -c(1:2)]
+yrs_comp <- agecomp_yr[agecomp_yr[,"FltSvyB"]==3,"Yr"][agecomp_yr[agecomp_yr[,"FltSvyB"]==3,"Yr"] %in% dat$CPUE$year] 
+tmp_val[yrs_comp,] <- agecomp_yr[agecomp_yr[,"FltSvyB"] == 3 & agecomp_yr[,"Yr"]%in%yrs_comp, -which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy"))]
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
@@ -283,7 +375,7 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #DECISION - What is NCPUEObs though?
 loc <- grep("#OBS_survey_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[yrs_comp,] <- dat$lencomp[dat$lencomp$FltSvy==3 & dat$lencomp$Yr%in%yrs_comp,]$Nsamp #Assign for just the years and fleets in YFT data
+tmp_val[yrs_comp,] <- dat$lencomp[dat$lencomp$FltSvyB==3 & dat$lencomp$Yr%in%yrs_comp,]$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
@@ -485,14 +577,27 @@ om_rep[(loc + 1)] <- new_val
 
 
 ##
-#Selectivity
+#Selectivity and number of fleets
 ##
 
 #The following two elements may be able to be removed after updating SIM_TIM.R (see issue 17)
 
+#if nfleets_EM <7 then have to change #input_selectivity_EM 
+if(nfleets_EM<7){
+loc <- grep("#input_selectivity_EM", om_rep)
+om_rep=om_rep[-((loc+((4*nfleets_EM)+1)):(loc+28))]
+
+#loc<-grep("#selectivity_age", om_rep)
+#om_rep[(loc+1):(loc+28)]=rep(paste(rep(1,nfleets_EM),collapse=" "),dat$Nages)
+}
+
+#update number of fleets
+loc <- grep("#nfleets_EM", om_rep)
+om_rep[loc+1] <- nfleets_EM
+
 #Update selectivity switches to differ by fleet
 loc <- grep("#select_switch$", om_rep)
-om_rep[loc+1] <- c("2 2 1 2 2 2 2")
+om_rep[loc+1] <- sel_switch #c("2 2 1 2 2 2 2")
 
 #Update selectivity switches to differ by survey fleet
 loc <- grep("#select_switch_survey", om_rep)
@@ -511,6 +616,26 @@ if(new_val != "0"){
   loc <- grep("#wt_srv_age", om_rep)
   om_rep[loc+1] <- "0"
 }
+
+# #The vector of starting values when fleets have different selects
+# loc <- grep("#sel_beta1", om_rep)
+# om_rep[loc+1] <-paste(selbeta1,collapse=" ")
+# loc <- grep("#sel_beta2", om_rep)
+# om_rep[loc+1] <-paste(selbeta2,collapse=" ")
+# loc <- grep("#sel_beta3", om_rep)
+# om_rep[loc+1] <-paste(selbeta3,collapse=" ")
+# loc <- grep("#sel_beta4", om_rep)
+# om_rep[loc+1] <-paste(selbeta4,collapse=" ")
+# 
+# #The above also put Nfleets_EM parms for the survey selectivity and we only want one. So...
+# loc <- grep("#sel_beta1_survey", om_rep)
+# om_rep[loc+1] <-paste(selbeta1[1],collapse=" ")
+# loc <- grep("#sel_beta2_survey", om_rep)
+# om_rep[loc+1] <-paste(selbeta2[1],collapse=" ")
+# loc <- grep("#sel_beta3_survey", om_rep)
+# om_rep[loc+1] <-paste(selbeta3[1],collapse=" ")
+# loc <- grep("#sel_beta4_survey", om_rep)
+# om_rep[loc+1] <-paste(selbeta4[1],collapse=" ")
 
 
 ##
@@ -633,13 +758,13 @@ om_rep[(loc + 1)] <- 1
 
 
 ####
-#Save YFT model as .dat file, copy .tpl over from tpl_loc
+#Save YFT model as .dat file, copy .tpl over
 ####
 
 setwd(file.path(mod_loc, mod_name, "Estimation_Model"))
 writeLines(om_rep, paste0(mod_name,".dat"))
-file.copy(from = file.path(tpl_loc, "YFT_1area.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
-shell(paste0("admb ",mod_name)) #build .exe from the .tpl
+file.copy(from = file.path(code_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
+
 
 ####
 #If want to remove years from the data
