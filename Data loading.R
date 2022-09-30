@@ -16,6 +16,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   code_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\test"
+  tpl_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Shortened105_estSel_Rdevs"
 }
 if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #data_loc is where you have your YFT data stored (have to clone repo from github)
@@ -28,6 +29,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
   code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
   mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
+  tpl_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Shortened105_estSel_Rdevs"
 }
 
 #FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE
@@ -763,7 +765,8 @@ om_rep[(loc + 1)] <- 1
 
 setwd(file.path(mod_loc, mod_name, "Estimation_Model"))
 writeLines(om_rep, paste0(mod_name,".dat"))
-file.copy(from = file.path(code_loc, "Estimation_Model", "TIM_EM.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
+file.copy(from = file.path(tpl_loc, "YFT_1area.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
+shell(paste0("admb ",mod_name)) #build .exe from the .tpl
 
 
 ####
