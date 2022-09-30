@@ -41,35 +41,16 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 ######################################################
 #Read in data from cloned github repository
 #Munge the data and then run the script
-#DECISION - using generalized tpl, if want a specific one need to adjust
+#DECISION - using generalized one area tpl, if want a specific one need to adjust
 ######################################################
 
-#One area - can adjust for other datasets
-load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
-dat <- dat_1A_4
-bdat <- biol_dat 
-mod_name <- "YFT_1area"
-om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE,fleetcombo=FALSE)
-
-
-#One area with 100 runs - ESS_05 is the base
-load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
-bdat <- biol_dat #this is only available in the single dataset
-load(file.path(data_loc,'YFT_1area_observations_1_100_ESS_05.RData'))
-for(i in 1:100){
-  dat <- get(paste0("dat_1A_",i))
-  mod_name <- paste0("YFT_1area_100sets",i)
-  om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
-  cat(paste0("\n Data set",i),"\n ")
-}
-
-
 #Four areas - can adjust for other datasets
+#OM is set up for 4 fleets for fleetcombo NEEDS to be TRUE
 load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
 dat <- dat_4A_4
 bdat <- biol_dat 
-mod_name <- "YFT_4area"
-om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
+mod_name <- "YFT_4area_4fleets"
+om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo = TRUE)
 
 
 
@@ -88,35 +69,59 @@ mungeData <- function(mod_name, reduce = NULL, run = FALSE,fleetcombo=FALSE){
 ###########
 if(fleetcombo){
   newfleets=list(c(1,2,7),3,c(4,6),5)
+  fleetsname = c("fishing_gi","fishing_hd","fishing_ll","fishing_other","fishing_bb","fishing_ps","fishing_trol")
+  newfleets_names=lapply(newfleets, FUN = function(x) fleetsname[x])
   
   #quick loop to sum catches etc.
   for(f in 1:length(newfleets)){
-    if(f==1){
-      #sum total catches by desired fleet combos
-      newcatch=data.frame(rowSums(dat$catch[newfleets[f][[1]]]))
-      colnames(newcatch)=paste(newfleets[f][[1]],collapse="")
-      
-      #combine len comps over desired fleets
-      newlencomp <-
-        dat$lencomp[which(dat$lencomp$FltSvy %in% newfleets[f][[1]]),] %>% 
-        group_by(Yr) %>% 
-        summarise(across(l10:l200,sum))
-      newlencomp$FltSvy=paste(newfleets[f][[1]],collapse="")
-      
-    } else {
-      newcatch=cbind(newcatch,rowSums(dat$catch[newfleets[f][[1]]]))
-      colnames(newcatch)[f]=paste(newfleets[f][[1]],collapse="")
-      
-      #combine lencomps
-      tempcomp <-
-        dat$lencomp[which(dat$lencomp$FltSvy %in% newfleets[f][[1]]),] %>% 
-        group_by(Yr) %>% 
-        summarise(across(l10:l200,sum))
-      tempcomp$FltSvy=paste(newfleets[f][[1]],collapse="")
-      newlencomp=rbind(newlencomp,tempcomp)
-      
-    } #end else
-  } #end for loop
+    for(a in 1:dat$N_areas){
+      if(f==1 & a==1){
+        #sum total catches by desired fleet combos and areas
+        newcatch=data.frame(rowSums(dat$catch[
+          intersect(
+            grep(paste(fleetsname[newfleets[f][[1]]],collapse="|"),colnames(dat$catch)),
+            grep(a,colnames(dat$catch)))
+          ]))
+        colnames(newcatch)=paste(c(newfleets[f][[1]],"_",a),collapse="")
+
+      } else {
+        newcatch=cbind(newcatch,rowSums(dat$catch[
+          intersect(
+            grep(paste(fleetsname[newfleets[f][[1]]],collapse="|"),colnames(dat$catch)),
+            grep(a,colnames(dat$catch)))
+          ]))
+        colnames(newcatch)[length(newfleets)*(f-1)+a]=paste(c(newfleets[f][[1]],"_",a),collapse="")
+        
+      } #end else
+    } #end area for loop
+  } #end fleet for loop
+  
+  #now combine length comps
+  
+  #Add fleet names and areas to lencomp dataframe for aggregating below
+  dat$lencomp$FltName = dat$fleetnames[dat$lencomp$FltSvy]
+  dat$lencomp$area = dat$fleetinfo$area[dat$lencomp$FltSvy]
+  #Add new fleet numbers based on the fleet names as based on aggregation defined with 'newfleets'
+  dat$lencomp$newfltsvy = unlist(lapply(gsub('.{2}$', '', dat$lencomp$FltName), 
+                                        FUN = function(x) grep(x,newfleets_names)))
+  
+  newlencomp <-
+    dat$lencomp %>%
+    group_by(newfltsvy,area,Yr) %>%
+    summarise(across(l10:l200,sum),.groups = "keep")
+  
+  ###NEED TO ADD NAME
+  #newlencomp$FltSvy=paste(unlist(lapply(newlencomp$newfltsvy, FUN = function(x) paste(newfleets[x][[1]], collapse=""))), newlencomp$area, collapse="") 
+  
+
+  # tempcomp <-
+  #   dat$lencomp[which(dat$lencomp$FltSvy %in% newfleets[f][[1]]),] %>% 
+  #   group_by(Yr) %>% 
+  #   summarise(across(l10:l200,sum))
+  # tempcomp$FltSvy=paste(newfleets[f][[1]],collapse="")
+  # newlencomp=rbind(newlencomp,tempcomp)
+
+  
   sel_switch=paste(ifelse(colnames(newcatch)[1:length(newfleets)]=="3",1,2),collapse=" ") #define selectivity by fleet
   newcatch=cbind(newcatch,year=dat$catch$year) #add year and seas column to new catch to match original dat
   newcatch=cbind(newcatch,seas=dat$catch$seas)
@@ -186,7 +191,7 @@ setwd(file.path(mod_loc, mod_name, "Operating_Model"))
 if(length(list.files())==0){
   file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
   file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
-  file.copy(from = file.path(mod_loc, "Panmictic", "Operating_Model", "TIM_OM_all.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
+  file.copy(from = file.path(mod_loc, "Spatial", "Operating_Model", "TIM_OM_all_4area.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
   invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
   file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
   print("OM run completed")
@@ -200,6 +205,7 @@ om_rep <- readLines("TIM_OM.rep",n=-1)
 #Function to ensure new data length equals current data length
 #If equal, outputs TRUE
 #If not equal, outputs number of lines to ammend to OM.rep file
+#Ammend can be positive or negative
 ####
 
 #TO DO (FOR LATER): add element to append automatically if doesnt equal
@@ -232,21 +238,16 @@ check_entry = function(loc, loc_end, new_entry){
 loc <- grep("#SSB_type", om_rep)
 om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
 
+
 ####
 #Areas
 ####
-#DECISION: Assuming spatial heterogeneity, i.e. one population and multiple regions based on data
-loc <- grep("#nregions_EM", om_rep)
-om_rep[loc+1] <- dat$N_areas
 
 #Estimate movement if 4 area (dont do for move_switch_OM)
 #For testing set to 0 for now 
-#<<<<<<<<<<<<<<<<<<<REVISIT<<<<<<<<<<<<<<<<<<<
-if(dat$N_areas == 4){
-  loc <- grep("#move_switch", om_rep)
-  om_rep[loc+1] <- 0
-  #om_rep[loc+1] <- 1
-}
+loc <- grep("#move_switch", om_rep)
+om_rep[loc+1] <- 0
+#om_rep[loc+1] <- 1 # <<<<<<<<<<<<REVISIT ONCE DONE WITH TESTING
 
 
 ####
