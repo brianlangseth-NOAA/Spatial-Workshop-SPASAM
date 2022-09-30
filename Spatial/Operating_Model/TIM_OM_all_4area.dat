@@ -159,7 +159,7 @@
 1
 #max_regs
   #>=nregions
-1
+4
 #max_ages
   #>=nages
 28
