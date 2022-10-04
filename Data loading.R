@@ -9,6 +9,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #master_loc is where the base level OM and EM reside
   #code_loc is where your code scripts reside (the github repo)
   #mod_loc is where you want to set up your new EM run
+  #EM_loc is the folder you want to copy your .tpl from
   
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
@@ -21,7 +22,9 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
 if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #data_loc is where you have your YFT data stored (have to clone repo from github)
   #master_loc is where the base level OM and EM reside
+  #code_loc is where your code scripts reside (the github repo)
   #mod_loc is where you want to set up your new EM run
+  #EM_loc is the folder you want to copy your .tpl from
   
   #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
