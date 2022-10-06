@@ -113,10 +113,6 @@ if(fleetcombo){
   newcatch=cbind(newcatch,seas=dat$catch$seas)
   newse_log_catch=dat$se_log_catch[1:length(newfleets)] #define catch se for new catch file
   nfleets_EM=length(newfleets) #redefine number of fleets
-  selbeta1=rep(1.34126,nfleets_EM) #starting selectivity parameter values for the correct number of fleets
-  selbeta2=rep(3.79525,nfleets_EM)
-  selbeta3=rep(-0.6,nfleets_EM)
-  selbeta4=rep(20,nfleets_EM)
   #add some columns to new lencomp and change some to numeric to match original dat
   newlencomp$FltSvy=as.numeric(newlencomp$FltSvy)
   newlencomp$Seas=1
@@ -134,10 +130,6 @@ if(fleetcombo){
   newfleets=list(c(1),c(2),c(3),c(4),c(5),c(6),c(7))
   sel_switch=c("2 2 1 2 2 2 2")
   nfleets_EM=7
-  selbeta1=rep(1.34126,nfleets_EM)
-  selbeta2=rep(3.79525,nfleets_EM)
-  selbeta3=rep(-0.6,nfleets_EM)
-  selbeta4=rep(20,nfleets_EM)
   
 } #end else for if fleetcombo
   
@@ -609,8 +601,14 @@ loc <- grep("#select_switch_survey", om_rep)
 om_rep[loc+1] <- "1"
 
 #Indicate whether there is a mirror fleet
-new_val <- "3" #mirroing fleet 3. 0 is no mirroring
+new_val <- grep("3", newfleets) #mirroring original fleet 3, which is now fleet 2. 0 is no mirroring
 om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
+
+#Update selectivity phases for double normal
+if(length(grep("2", sel_switch))>0){ #If any sel_switch is 2 (double logistic)
+  loc <- grep("#ph_sel_dubl$", om_rep)
+  om_rep[loc+1] <- "5"
+}
 
 #If have mirror then turn off survey selectivity and set weight of survey age comp to zero
 if(new_val != "0"){
@@ -621,26 +619,6 @@ if(new_val != "0"){
   loc <- grep("#wt_srv_age", om_rep)
   om_rep[loc+1] <- "0"
 }
-
-# #The vector of starting values when fleets have different selects
-# loc <- grep("#sel_beta1", om_rep)
-# om_rep[loc+1] <-paste(selbeta1,collapse=" ")
-# loc <- grep("#sel_beta2", om_rep)
-# om_rep[loc+1] <-paste(selbeta2,collapse=" ")
-# loc <- grep("#sel_beta3", om_rep)
-# om_rep[loc+1] <-paste(selbeta3,collapse=" ")
-# loc <- grep("#sel_beta4", om_rep)
-# om_rep[loc+1] <-paste(selbeta4,collapse=" ")
-# 
-# #The above also put Nfleets_EM parms for the survey selectivity and we only want one. So...
-# loc <- grep("#sel_beta1_survey", om_rep)
-# om_rep[loc+1] <-paste(selbeta1[1],collapse=" ")
-# loc <- grep("#sel_beta2_survey", om_rep)
-# om_rep[loc+1] <-paste(selbeta2[1],collapse=" ")
-# loc <- grep("#sel_beta3_survey", om_rep)
-# om_rep[loc+1] <-paste(selbeta3[1],collapse=" ")
-# loc <- grep("#sel_beta4_survey", om_rep)
-# om_rep[loc+1] <-paste(selbeta4[1],collapse=" ")
 
 
 ##
