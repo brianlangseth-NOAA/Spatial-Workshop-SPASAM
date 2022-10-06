@@ -45,7 +45,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 ######################################################
 
 #Four areas - can adjust for other datasets
-#OM is set up for 4 fleets for fleetcombo NEEDS to be TRUE
+#OM is set up for 4 fleets so fleetcombo NEEDS to be TRUE
 load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
 dat <- dat_4A_4
 bdat <- biol_dat 
@@ -66,6 +66,8 @@ mungeData <- function(mod_name, reduce = NULL, run = FALSE,fleetcombo=FALSE){
 
 ###########
 #if desired then combine data to reduce number of fleets
+#The option for keeping all seven fleets is not set up yet: 
+#The OM is set up for four fleets, will need to edit if want seven fleets
 ###########
 if(fleetcombo){
   newfleets=list(c(1,2,7),3,c(4,6),5)
@@ -96,76 +98,49 @@ if(fleetcombo){
     } #end area for loop
   } #end fleet for loop
   
-  #now combine length comps
-  
+  #Aggregate by fleet and area, then rename fleets using combined fleet names
   #Add fleet names and areas to lencomp dataframe for aggregating below
   dat$lencomp$FltName = dat$fleetnames[dat$lencomp$FltSvy]
   dat$lencomp$area = dat$fleetinfo$area[dat$lencomp$FltSvy]
   #Add new fleet numbers based on the fleet names as based on aggregation defined with 'newfleets'
   dat$lencomp$newfltsvy = unlist(lapply(gsub('.{2}$', '', dat$lencomp$FltName), 
                                         FUN = function(x) grep(x,newfleets_names)))
-  
   newlencomp <-
     dat$lencomp %>%
-    group_by(newfltsvy,area,Yr) %>%
+    group_by("FltSvyB"=newfltsvy,area,Yr) %>%
     summarise(across(l10:l200,sum),.groups = "keep")
+  newlencomp$FltSvy=unlist(lapply(newlencomp$FltSvyB,function(x) paste(newfleets[x][[1]],collapse="")))
   
-  ###NEED TO ADD NAME
-  #newlencomp$FltSvy=paste(unlist(lapply(newlencomp$newfltsvy, FUN = function(x) paste(newfleets[x][[1]], collapse=""))), newlencomp$area, collapse="") 
-  
-
-  # tempcomp <-
-  #   dat$lencomp[which(dat$lencomp$FltSvy %in% newfleets[f][[1]]),] %>% 
-  #   group_by(Yr) %>% 
-  #   summarise(across(l10:l200,sum))
-  # tempcomp$FltSvy=paste(newfleets[f][[1]],collapse="")
-  # newlencomp=rbind(newlencomp,tempcomp)
-
-  
-  sel_switch=paste(ifelse(colnames(newcatch)[1:length(newfleets)]=="3",1,2),collapse=" ") #define selectivity by fleet
-  newcatch=cbind(newcatch,year=dat$catch$year) #add year and seas column to new catch to match original dat
-  newcatch=cbind(newcatch,seas=dat$catch$seas)
-  newse_log_catch=dat$se_log_catch[1:length(newfleets)] #define catch se for new catch file
-  nfleets_EM=length(newfleets) #redefine number of fleets
-  selbeta1=rep(1.34126,nfleets_EM) #starting selectivity parameter values for the correct number of fleets
-  selbeta2=rep(3.79525,nfleets_EM)
-  selbeta3=rep(-0.6,nfleets_EM)
-  selbeta4=rep(20,nfleets_EM)
-  #add some columns to new lencomp and change some to numeric to match original dat
+  #Add some columns to lencomp and change some to numeric to match original dat
   newlencomp$FltSvy=as.numeric(newlencomp$FltSvy)
   newlencomp$Seas=1
   newlencomp$Gender=0
   newlencomp$Part=0
   newlencomp$Nsamp=5
+
+  #Add to newcatch to match original dat
+  newcatch=cbind(newcatch,year=dat$catch$year)
+  newcatch=cbind(newcatch,seas=dat$catch$seas)
+  newse_log_catch=dat$se_log_catch[1:length(newfleets)] #define catch se for new catch file
+  
+  #Update variables 
+  sel_switch=paste(ifelse(newfleets[1:length(newfleets)]=="3",1,2),collapse=" ") #define selectivity by fleet
+  nfleets_EM=length(newfleets) #redefine number of fleets
   
   #replace values in dat with combined fleet data
   dat$catch=newcatch
   dat$se_log_catch=newse_log_catch
   dat$lencomp=data.frame(newlencomp)
-  dat$Nfleet=nfleets_EM
+  dat$Nfleet=nfleets_EM #The data sets number of fleets to be across all areas. TIM needs in each area
   
 } else { #end if fleetcombo
-  newfleets=list(c(1),c(2),c(3),c(4),c(5),c(6),c(7))
-  sel_switch=c("2 2 1 2 2 2 2")
-  nfleets_EM=7
-  selbeta1=rep(1.34126,nfleets_EM)
-  selbeta2=rep(3.79525,nfleets_EM)
-  selbeta3=rep(-0.6,nfleets_EM)
-  selbeta4=rep(20,nfleets_EM)
+  
+  print("OM is set up as four fleets, set 'fleetcombo' to TRUE")
   
 } #end else for if fleetcombo
   
-#When I combine fleets they don't equal a simple sequence, which broke some Langseth code. This is needed for my solution.
-  for(x in 1:length(newfleets)){
-    if(x==1){
-      FltSvyB=ifelse(dat$lencomp[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,999)
-    } else {
-      FltSvyB=ifelse(dat$lencomp[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,FltSvyB)
-    }
-  }
-  dat$lencomp=cbind(dat$lencomp,FltSvyB)
-  
 
+  
 ####################
 #Set up OM.rep file
 ####################
@@ -245,10 +220,12 @@ om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
 
 #Estimate movement if 4 area (dont do for move_switch_OM)
 #For testing set to 0 for now 
-loc <- grep("#move_switch", om_rep)
+loc <- grep("#move_switch$", om_rep)
 om_rep[loc+1] <- 0
 #om_rep[loc+1] <- 1 # <<<<<<<<<<<<REVISIT ONCE DONE WITH TESTING
 
+#Resest number of surveys: TIM requires number per area, data is number across areas
+dat$Nsurveys = dat$Nsurveys/dat$N_areas
 
 ####
 #Catches
@@ -256,16 +233,20 @@ om_rep[loc+1] <- 0
 
 #Catch - OBS_yield_fleet
 loc <- grep("#OBS_yield_fleet$", om_rep)
+temp_val <- data.frame(mapply(c, dat$catch[,1:dat$Nfleet], 
+                  dat$catch[,(dat$Nfleet+1):(dat$Nfleet*2)],
+                  dat$catch[,((dat$Nfleet*2)+1):(dat$Nfleet*3)],
+                  dat$catch[,((dat$Nfleet*3)+1):(dat$Nfleet*4)]))
 new_val <- tidyr::unite(
-  round(dat$catch[,1:nfleets_EM], 3), #DECISION - round to 3 decimals
+  round(temp_val, 3), #DECISION - round to 3 decimals
   sep = " ", 
   col = "new_val")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val$new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val$new_val
 
 #Catch SE - OBS_yield_fleet_se_EM
 loc <- grep("#OBS_yield_fleet_se_EM", om_rep)
-new_val <- rep(paste(dat$se_log_catch, collapse = " "),dat$endyr)
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+new_val <- rep(paste(dat$se_log_catch, collapse = " "),dat$endyr*dat$N_areas)
+om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 
 
 ####
@@ -330,23 +311,16 @@ alk[dat$Nages,noentry[-1]]=1 #set the last columns to be 1 for the last age
 alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
 #Convert length comps to age comps
 #DECISION - assume OBS_catch_prop is blocked in each year for all fleets (year 1 for all fleets, then year 2 for all fleets, etc.)
+#TO DO - confirm these are blocked by area, which is what Im assuming (see closed issue #31)
 #agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
 agecomp <- as.matrix(dat$lencomp[which(colnames(dat$lencomp) %in% paste0("l",seq(10,200,by=5)))]) %*% t(alk)
 agecomp_prop <- agecomp/rowSums(agecomp)
-agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy, agecomp_prop)
-for(x in 1:length(newfleets)){
-  if(x==1){
-  FltSvyB=ifelse(agecomp_yr[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,999)
-  } else {
-    FltSvyB=ifelse(agecomp_yr[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,FltSvyB)
-  }
-}
-agecomp_yr=cbind(agecomp_yr,FltSvyB)
+agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy, "FltSvyB" = dat$lencomp$FltSvyB, "area" = dat$lencomp$area, agecomp_prop)
 
 #Put into om_rep file
 loc <- grep("#OBS_catch_prop$", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet, ncol = dat$Nages) #Set up for all years and fleets
-tmp_val[(dat$Nfleet * (agecomp_yr[,"Yr"] - 1) + agecomp_yr[,"FltSvyB"]),] <- agecomp_yr[,-which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy"))] #Assign for just the years and fleets in YFT data. Each year for all fleets. 
+tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet*dat$N_areas, ncol = dat$Nages) #Set up for all years and fleets
+tmp_val[(dat$Nfleet * (agecomp_yr[,"Yr"] - 1 + (agecomp_yr[,"area"] - 1) * dat$endyr) + agecomp_yr[,"FltSvyB"]),] <- agecomp_yr[,-which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy","area"))] #Assign for just the years and fleets in YFT data. Each year for all fleets. 
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines or remove some lines before replacing
 #TO DO (for later): adjust add lines to automatically remove lines if need be
@@ -355,60 +329,69 @@ add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
 if(add_lines<0){
   om_rep <- om_rep[-((loc+1):(loc-1*add_lines))] #remove lines so element equals the length of entry being added
 }
-om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet*dat$N_areas)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
+#DECISION - assume all years within area 1 are first, then all years in area 2, etc.
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nfleet) #Set up for all years and fleets
-tmp_val[cbind(dat$lencomp$Yr, dat$lencomp$FltSvyB)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
+tmp_val <- matrix(0, nrow = dat$endyr*dat$N_areas, ncol = dat$Nfleet) #Set up for all years and fleets by area
+tmp_val[cbind(dat$endyr * (dat$lencomp$area-1) + dat$lencomp$Yr, dat$lencomp$FltSvyB)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 
 
 ####
 #Survey
 ####
 
-#Survey index - #OBS_survey_fleet_bio
+#make year in dat$CPUE numeric
+dat$CPUE$year = as.numeric(dat$CPUE$year)+(min(as.numeric(levels(dat$CPUE$year)))-1)
+
+#Survey index - #OBS_survey_fleet_bio'
+#DECISION: This only works if there is one survey per area. Would need to recode if more than one survey per area
 loc <- grep("#OBS_survey_fleet_bio$", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[cbind(as.numeric(levels(dat$CPUE$year)),dat$Nsurveys)] <- dat$CPUE$cpu #Assign for just the years and surveys in YFT data
+tmp_val <- matrix(0, nrow = dat$endyr*dat$N_areas, ncol = dat$Nsurveys) #Set up for all years and surveys
+tmp_val[cbind(dat$endyr*(as.numeric(as.factor(dat$CPUE$index))-1) + dat$CPUE$year, dat$Nsurveys)] <- dat$CPUE$cpu #Assign for just the years and surveys in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 
 #True survey index - #true_survey_fleet_bio
 #This isn't used when diagnostic_switch is 0 (our default) but still change here
 loc <- grep("#true_survey_fleet_bio$", om_rep)
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 
 #Survey index SE - #OBS_survey_fleet_bio_se_EM
+#DECISION: This only works if there is one survey per area. Would need to recode if more than one survey per area
 loc <- grep("#OBS_survey_fleet_bio_se_EM", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[cbind(as.numeric(levels(dat$CPUE$year)),dat$Nsurveys)] <- dat$CPUE$cv #Assign for just the years and surveys in YFT data
+tmp_val <- matrix(0, nrow = dat$endyr*dat$N_areas, ncol = dat$Nsurveys) #Set up for all years and surveys
+tmp_val[cbind(dat$endyr*(as.numeric(as.factor(dat$CPUE$index))-1) + dat$CPUE$year, dat$Nsurveys)] <- dat$CPUE$cv #Assign for just the years and surveys in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 #DECISION - not using precise se (not using CV to SE conversion)
 
 #Survey Comps - #OBS_survey_prop set to #OBS_catch_prop for fleet 3
 #DECISION - copying from proportions in fleet 3 catch for only years that overlap with cpue years. 
 #Believe these to be the same as the fleet comps. Can set survey select to that of catch
 loc <- grep("#OBS_survey_prop$", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr*dat$Nsurveys, ncol = dat$Nages) #Set up for all years and surveys
-#years of comp data for fleet 3 that overlap with years of CPUE data
-yrs_comp <- agecomp_yr[agecomp_yr[,"FltSvyB"]==3,"Yr"][agecomp_yr[agecomp_yr[,"FltSvyB"]==3,"Yr"] %in% dat$CPUE$year] 
-tmp_val[yrs_comp,] <- agecomp_yr[agecomp_yr[,"FltSvyB"] == 3 & agecomp_yr[,"Yr"]%in%yrs_comp, -which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy"))]
+tmp_val <- matrix(0, nrow = dat$endyr*dat$Nsurveys*dat$N_areas, ncol = dat$Nages) #Set up for all years and surveys
+#Comp data for fleet 3 that overlaps with years and areas of CPUE data.
+overlap_survey_comp <- agecomp_yr[grep("3",agecomp_yr[,"FltSvy"]),][apply(agecomp_yr[grep("3",agecomp_yr[,"FltSvy"]),c("Yr","area")], 1, FUN = paste, collapse ="") %in% apply(cbind(dat$CPUE$year,as.numeric(dat$CPUE$index)-dat$Nfleet*dat$N_areas),1,FUN=paste0,collapse=""),] 
+tmp_val[dat$endyr*(overlap_survey_comp[,"area"] - 1) + overlap_survey_comps[,"Yr"],] <- overlap_survey_comp[,-which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy","area"))] 
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$Nsurveys*dat$N_areas)] <- new_val
 
 #Sample size of comps - #OBS_survey_prop_N_EM
 #DECISION - copying from proportions in fleet 3 catch for only years that overlap with cpue years.  
 #Believe these to be the same as the fleet comps. Can set survey select to that of catch.
 #DECISION - What is NCPUEObs though?
 loc <- grep("#OBS_survey_prop_N_EM", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[yrs_comp,] <- dat$lencomp[dat$lencomp$FltSvyB==3 & dat$lencomp$Yr%in%yrs_comp,]$Nsamp #Assign for just the years and fleets in YFT data
+tmp_val <- matrix(0, nrow = dat$endyr*dat$N_areas, ncol = dat$Nsurveys) #Set up for all years and surveys
+#Assign for just the years and fleets in YFT data
+tmp_val[dat$endyr*(overlap_survey_comp[,"area"] - 1) + overlap_survey_comps[,"Yr"],] <- 
+  dat$lencomp[apply(dat$lencomp[,c("Yr","FltSvyB","area")],1,FUN = paste, collapse = "") %in%
+                apply(overlap_survey_comps[,c("Yr","FltSvyB","area")],1,FUN = paste, collapse = ""),]$Nsamp
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 
 
 ####
@@ -418,13 +401,13 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #Rec index - #OBS_rec_index_BM
 #DECISION - set to zero
 loc <- grep("#OBS_rec_index_BM", om_rep)
-tmp_val <- rep(0, dat$endyr)
-new_val <- paste(tmp_val, collapse = " ")
-om_rep[(loc + 1)] <- new_val
+tmp_val <- matrix(0, nrow = dat$N_areas, ncol = dat$endyr)
+new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
+om_rep[(loc + 1):(loc + dat$N_areas)] <- new_val
 
 
 ####
-#Tagging
+#Tagging <<<<<<<<<<<<<< Need to do tagging yet
 ####
 
 #Have tag switch on - #do_tag
@@ -454,21 +437,16 @@ om_rep[(loc + 1)] <- maxlife
 #DECISION - age of full selection (kept currently at 8)
 
 #Tag report rate - #...report_rate...
-#DECISION - fix at true value from OM (but reset EM to be the same)
+#DECISION - fix at true value from OM (but reset EM to be the same) i.e. Dont estimate it
 #but dont have likelihood penalty (wt_B_pen = 0) so dont need report_rate_ave or report_rate_sigma
 #Use based on analyst guidance document (https://aaronmberger-nwfsc.github.io/Spatial-Assessment-Modeling-Workshop/articles/Analyst_guidance.html)
 loc <- grep("#report_rate_switch", om_rep)
 om_rep[(loc + 1)] <- 0 #stay at 0
 loc <- grep("#input_report_rate_EM", om_rep)
-om_rep[(loc + 1)] <- 0.9
+om_rep[(loc + 1)] <- rep(0.9, dat$N_areas)
 loc <- grep("#report_rate_TRUE", om_rep)
-new_val <- rep(0.9, length(unique(dat$tag_releases$yr)))
-#Check if number of entries dont match up. Append new lines before replacing
-entries <- grep("#", om_rep)
-add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-if(!is.logical(add_lines)) {
-  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
-}
+tmp_val <- matrix(0.9, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$N_areas)
+new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 #DECISION - there is no tag retention or tag loss in the TIM yet. It is in YFT
 
@@ -476,37 +454,26 @@ om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 #YFT data already adjusts for initial tagging mortality
 #DECISION - assume tag releases of age 20 fish are actually age 20 fish. In reality, age 20 is a plus group for tagging
 loc <- grep("#ntags$", om_rep)
-tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and surveys
-tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- dat$tag_releases$nrel #Assign for just the years and fleets in YFT data
+tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr))*dat$N_areas, ncol = dat$Nages) #Set up for all regions, years and surveys
+tmp_val[cbind(dat$N_areas*(dat$tag_releases$reg - 1) + as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- dat$tag_releases$nrel #Assign for just the years and fleets in YFT data
 tags_yr_age <- tmp_val #save for later
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-#Check if number of entries dont match up. Append new lines before replacing
-entries <- grep("#", om_rep)
-add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-if(!is.logical(add_lines)) {
-  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
-}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Total tags - #ntags_total
 #DECISION - set equal to number of tags (ntags)
 loc <- grep("#ntags_total", om_rep)
-new_val <- paste(rowSums(tags_yr_age), collapse = " ") #from ntags script
+tmp_val <- matrix(rowSums(tags_yr_age), nrow = dat$N_areas, ncol = length(unique(dat$tag_releases$yr)), byrow = T)
+new_val <- paste(colSums(tmp_val), collapse = " ")
 om_rep[(loc + 1)] <- new_val
 
 #Tag sample size - #tag_N_EM
 #DECISION - SET ARBITRARILY TO 200
 #Could set to actual sample size but may swamp likelihood
 loc <- grep("#tag_N_EM", om_rep)
-tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and ages
-tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- 200 #Assign for just the years and ages in YFT data
+tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr))*dat$N_areas, ncol = dat$Nages) #Set up for all regions, years and ages
+tmp_val[cbind(dat$N_areas*(dat$tag_releases$reg - 1) + as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- 200 #Assign for just the years and ages in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-#Check if number of entries dont match up. Append new lines before replacing
-entries <- grep("#", om_rep)
-add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-if(!is.logical(add_lines)) {
-  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
-}
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
 #Tag recaptures - #OBS_tag_prop_final
@@ -523,24 +490,28 @@ for(i in 1:length(unique(dat$tag_releases$yr))){ #Script from TM.tpl to set dime
   xy[i] <- min(maxlife,dat$endyr-xx+1)
   nt[i] <- xy[i]*dat$N_areas+1
 }
-#Set up array for tag recaptures by age (row), by year when recaptures possible (column), by release year (3rd-dimension)
+#Set up array for tag recaptures by age (row), by year when recaptures possible (column), by release year by area (3rd-dimension)
 #DECISION - ignore all recaptures made after the entered maxlife of tags 
 if(length(unique(nt)) == 1){
-  tmp_val <- array(0, dim = c(dat$Nages, max(nt), length(unique(dat$tag_releases$yr)))) #numbers
+  tmp_val <- array(0, dim = c(dat$Nages, max(nt), length(unique(dat$tag_releases$yr))*dat$N_areas)) #numbers
   tmp_val_prop <- tmp_val #proportions
 }
 #Add number of recaptures
 tmp_recap_info <- full_recap_info[full_recap_info$yr_diff <= maxlife, ]
-tmp_val[cbind(tmp_recap_info$age, tmp_recap_info$yr_diff, as.numeric(factor(tmp_recap_info$yr.x)))] <- tmp_recap_info$recaps #Assign for just the years and ages in YFT data
+tmp_recap_info$recap.reg <- as.numeric(str_sub(rownames(dat$fleetinfo)[tmp_recap_info$fleet],-1)) #region of recap
+tmp_val[cbind(tmp_recap_info$age, max(xy)*(tmp_recap_info$recap.reg - 1) + tmp_recap_info$yr_diff, dat$N_areas*(tmp_recap_info$reg - 1) + as.numeric(factor(tmp_recap_info$yr.x)))] <- tmp_recap_info$recaps #Assign for just the years, recap region, and ages in YFT data
 #Add in number of tags not captured (nt'th column) based on difference between total tags and recaptures at age
 #across possible recapture periods for each release event
 tmp_val[, max(nt), ] <- t(tags_yr_age) - apply(tmp_val, c(1,3), FUN = sum)
 #Due to rounding (Aaron Berger's email on Jan 25, 2022) there may be small negative numbers, 
 #DECISION - Where recaptures were higher than releases set number of recaptures (which are integers) to 
 #equal the slightly lower number of tags released (which are doubles) and set non-captures to 0
+#The 0.9 age 16 fish caught in first year of release is less than...the one recaught in second year
+  tags_yr_age[,which(tmp_val[, max(nt), ]<0)] 
+  tmp_val[which(tmp_val[, max(nt), ]<0),,] 
 tmp_val[16,c(2,max(nt)),1] <- c(tmp_val[16,2,1] + tmp_val[16,max(nt),1], 0)
 #Change to proportions
-#Sum number of tags for each age across possible recapture periods for each release event
+#Sum number of tags for each age across possible recapture periods for each release event in each area
 for(i in 1:dim(tmp_val)[3]){
   tmp_prop <- tmp_val[,,i]/(apply(tmp_val, c(1,3), FUN = sum)[,i])
   tmp_val_prop[,,i][which(tmp_prop!=0)] <- tmp_prop[which(tmp_prop!=0)]
@@ -570,6 +541,7 @@ om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 loc <- grep("#OBS_tag_prop_final_no_age", om_rep)
 tmp_val_noage <- apply(tmp_val, c(3,2), FUN = sum)
 tmp_val_noage_prop <- tmp_val_noage/rowSums(tmp_val_noage)
+tmp_val_noage_prop[!is.finite(tmp_val_noage_prop)] = 0 #set nan's to zero
 new_val <- apply(tmp_val_noage_prop, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
@@ -593,53 +565,34 @@ om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 #F scalar when tag mixing is incomplete - #F_tag_scalar
 #DECISION - Copy the 7th release value into the 8th-10th
 #Could resolve by fixing the OM.dat nyrs_release to 10 and rerunning
-loc <- grep("#F_tag_scalar", om_rep)
-tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries (TO DO: the 3 entries are HARD CODED, so possibly revise)
-new_val <- paste(tmp_val, collapse = " ")
-om_rep[(loc + 1)] <- new_val
+# loc <- grep("#F_tag_scalar", om_rep)
+# tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries (TO DO: the 3 entries are HARD CODED, so possibly revise)
+# new_val <- paste(tmp_val, collapse = " ")
+# om_rep[(loc + 1)] <- new_val
 
 #Residency rate of tagged fish in year of release - #T_tag_res
 #DECISION - Copy the 7th release value into the 8th-10th
 #Could resolve by fixing the OM.dat nyrs_release to 10 and rerunning
-loc <- grep("#T_tag_res", om_rep)
-tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries (TO DO: the 3 entries are HARD CODED, so possibly revise)
-new_val <- paste(tmp_val, collapse = " ")
-om_rep[(loc + 1)] <- new_val
+# loc <- grep("#T_tag_res", om_rep)
+# tmp_val <- c(om_rep[loc+1], rep(0.73,3)) #add three more entries (TO DO: the 3 entries are HARD CODED, so possibly revise)
+# new_val <- paste(tmp_val, collapse = " ")
+# om_rep[(loc + 1)] <- new_val
 
 
 ##
 #Selectivity and number of fleets
 ##
 
-#The following two elements may be able to be removed after updating SIM_TIM.R (see issue 17)
-
-#if nfleets_EM <7 then have to change #input_selectivity_EM 
-if(nfleets_EM<7){
-loc <- grep("#input_selectivity_EM", om_rep)
-om_rep=om_rep[-((loc+((4*nfleets_EM)+1)):(loc+28))]
-
-#loc<-grep("#selectivity_age", om_rep)
-#om_rep[(loc+1):(loc+28)]=rep(paste(rep(1,nfleets_EM),collapse=" "),dat$Nages)
-}
-
-#update number of fleets
-loc <- grep("#nfleets_EM", om_rep)
-om_rep[loc+1] <- nfleets_EM
-
 #Update selectivity switches to differ by fleet
 loc <- grep("#select_switch$", om_rep)
-om_rep[loc+1] <- sel_switch #c("2 2 1 2 2 2 2")
-if(dat$N_areas==4) om_rep[loc+1] <- c("2 2 2 1 1 1 1 2 2 2 2 2 2 2 2 2") 
+om_rep[loc+1] <- sel_switch
 
 #Update selectivity switches to differ by survey fleet
 loc <- grep("#select_switch_survey", om_rep)
 om_rep[loc+1] <- "1"
-if(dat$N_areas==4) om_rep[loc+1] <- c("1 1 1 1") 
-
 
 #Indicate whether there is a mirror fleet
-new_val <- "3" #mirroing fleet 3. 0 is no mirroring
-if(dat$N_areas == 4) new_val <- c("3 3 3 3")
+new_val <- grep("3", newfleets) #mirroing original fleet 3, which is now fleet 2. 0 is no mirroring
 om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
 
 #If have mirror then turn off survey selectivity and set weight of survey age comp to zero
@@ -651,26 +604,6 @@ if(new_val != "0"){
   loc <- grep("#wt_srv_age", om_rep)
   om_rep[loc+1] <- "0"
 }
-
-# #The vector of starting values when fleets have different selects
-# loc <- grep("#sel_beta1", om_rep)
-# om_rep[loc+1] <-paste(selbeta1,collapse=" ")
-# loc <- grep("#sel_beta2", om_rep)
-# om_rep[loc+1] <-paste(selbeta2,collapse=" ")
-# loc <- grep("#sel_beta3", om_rep)
-# om_rep[loc+1] <-paste(selbeta3,collapse=" ")
-# loc <- grep("#sel_beta4", om_rep)
-# om_rep[loc+1] <-paste(selbeta4,collapse=" ")
-# 
-# #The above also put Nfleets_EM parms for the survey selectivity and we only want one. So...
-# loc <- grep("#sel_beta1_survey", om_rep)
-# om_rep[loc+1] <-paste(selbeta1[1],collapse=" ")
-# loc <- grep("#sel_beta2_survey", om_rep)
-# om_rep[loc+1] <-paste(selbeta2[1],collapse=" ")
-# loc <- grep("#sel_beta3_survey", om_rep)
-# om_rep[loc+1] <-paste(selbeta3[1],collapse=" ")
-# loc <- grep("#sel_beta4_survey", om_rep)
-# om_rep[loc+1] <-paste(selbeta4[1],collapse=" ")
 
 
 ##
@@ -709,17 +642,16 @@ om_rep[(loc + 1)] <- 0.18
 #Weight at age - #input_weight
 loc <- grep("#input_weight", om_rep)
 tmp_val <- round(bdat$a*bdat$L^bdat$b, 3) 
-om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ") 
+om_rep[(loc + 1):(loc + dat$N_areas)] <- paste(tmp_val, collapse = " ") 
 
 #Weight at age in catch - #input_catch_weight
 loc <- grep("#input_catch_weight", om_rep)
-tmp_val <- round(bdat$a*bdat$L^bdat$b, 3) 
-om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ") 
+om_rep[(loc + 1):(loc + dat$N_areas)] <- paste(tmp_val, collapse = " ") 
 
 #Maturity at age - #maturity
 loc <- grep("#maturity$", om_rep)
 tmp_val <- bdat$Maturity
-om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
+om_rep[(loc + 1):(loc + dat$N_areas)] <- paste(tmp_val, collapse = " ")
 
 #Fecundity - #fecundity
 #DECISION - keep as 1 for all ages
@@ -746,14 +678,14 @@ om_rep[(loc + 1)] <- 10
 
 #Tagging weight to include tag likelihood 
 loc <- grep("#wt_tag", om_rep)
-om_rep[(loc + 1)] <- 0
+om_rep[(loc + 1)] <- 1
 
 #Initial abundance set up and penalty for initial value at age being different from mean_N
 loc <- grep("#init_abund_switch", om_rep) #decaying from Rave
 om_rep[(loc + 1)] <- 1
 loc <- grep("#abund_pen_switch", om_rep) #keep off
 om_rep[(loc + 1)] <- 0
-loc <- grep("#wt_abund_pen", om_rep) #keep off
+loc <- grep("#wt_abund_pen", om_rep) #keep off (because abund_pen_switch is off)
 om_rep[(loc + 1)] <- 0.1
 
 
