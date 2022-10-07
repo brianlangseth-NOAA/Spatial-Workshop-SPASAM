@@ -64,6 +64,14 @@ for(i in 1:100){
 }
 
 
+#One area 4 fleets with years reduced
+load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
+dat <- dat_1A_4
+bdat <- biol_dat 
+mod_name <- "YFT_1area_4fleets"
+om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo=TRUE)
+
+
 ########################################################################################
 #-------FUNCTION TO GET YFT DATA INTO THE PROPER FORMAT FROM THE ORIGINAL OM FILE------#
 ########################################################################################
