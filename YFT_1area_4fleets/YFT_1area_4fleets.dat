@@ -35,7 +35,7 @@
 #select_switch_survey
 1
 #survey_mirror
-3
+2
 #maturity_switch_equil
 0
 #SSB_type
@@ -207,7 +207,7 @@
 #ph_sel_log_surv
 -2
 #ph_sel_dubl
--5
+5
 #ph_sel_dubl_surv
 -5
 #ph_q
