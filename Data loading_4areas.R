@@ -62,7 +62,7 @@ om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo = TRUE)
 #run: whether to run the EM
 #fleetcombo: do you want combine some fleets (TRUE or FALSE); define fleet combos in newfleets list below
 
-mungeData <- function(mod_name, reduce = NULL, run = FALSE,fleetcombo=FALSE){
+mungeData <- function(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE){
 
 ###########
 #if desired then combine data to reduce number of fleets
@@ -376,7 +376,7 @@ loc <- grep("#OBS_survey_prop$", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr*dat$Nsurveys*dat$N_areas, ncol = dat$Nages) #Set up for all years and surveys
 #Comp data for fleet 3 that overlaps with years and areas of CPUE data.
 overlap_survey_comp <- agecomp_yr[grep("3",agecomp_yr[,"FltSvy"]),][apply(agecomp_yr[grep("3",agecomp_yr[,"FltSvy"]),c("Yr","area")], 1, FUN = paste, collapse ="") %in% apply(cbind(dat$CPUE$year,as.numeric(dat$CPUE$index)-dat$Nfleet*dat$N_areas),1,FUN=paste0,collapse=""),] 
-tmp_val[dat$endyr*(overlap_survey_comp[,"area"] - 1) + overlap_survey_comps[,"Yr"],] <- overlap_survey_comp[,-which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy","area"))] 
+tmp_val[dat$endyr*(overlap_survey_comp[,"area"] - 1) + overlap_survey_comp[,"Yr"],] <- overlap_survey_comp[,-which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy","area"))] 
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr*dat$Nsurveys*dat$N_areas)] <- new_val
 
@@ -387,9 +387,9 @@ om_rep[(loc + 1):(loc + dat$endyr*dat$Nsurveys*dat$N_areas)] <- new_val
 loc <- grep("#OBS_survey_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr*dat$N_areas, ncol = dat$Nsurveys) #Set up for all years and surveys
 #Assign for just the years and fleets in YFT data
-tmp_val[dat$endyr*(overlap_survey_comp[,"area"] - 1) + overlap_survey_comps[,"Yr"],] <- 
+tmp_val[dat$endyr*(overlap_survey_comp[,"area"] - 1) + overlap_survey_comp[,"Yr"],] <- 
   dat$lencomp[apply(dat$lencomp[,c("Yr","FltSvyB","area")],1,FUN = paste, collapse = "") %in%
-                apply(overlap_survey_comps[,c("Yr","FltSvyB","area")],1,FUN = paste, collapse = ""),]$Nsamp
+                apply(overlap_survey_comp[,c("Yr","FltSvyB","area")],1,FUN = paste, collapse = ""),]$Nsamp
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 
@@ -443,7 +443,7 @@ om_rep[(loc + 1)] <- maxlife
 loc <- grep("#report_rate_switch", om_rep)
 om_rep[(loc + 1)] <- 0 #stay at 0
 loc <- grep("#input_report_rate_EM", om_rep)
-om_rep[(loc + 1)] <- rep(0.9, dat$N_areas)
+om_rep[(loc + 1)] <- paste(rep(0.9, dat$N_areas), collapse = " ")
 loc <- grep("#report_rate_TRUE", om_rep)
 tmp_val <- matrix(0.9, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$N_areas)
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
@@ -595,6 +595,12 @@ om_rep[loc+1] <- "1"
 new_val <- grep("3", newfleets) #mirroing original fleet 3, which is now fleet 2. 0 is no mirroring
 om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
 
+#Update selectivity phases for double normal
+if(length(grep("2", sel_switch))>0){ #If any sel_switch is 2 (double logistic)
+  loc <- grep("#ph_sel_dubl$", om_rep)
+  om_rep[loc+1] <- "5"
+}
+
 #If have mirror then turn off survey selectivity and set weight of survey age comp to zero
 if(new_val != "0"){
   loc <- grep("#ph_sel_log_surv", om_rep)
@@ -683,6 +689,8 @@ om_rep[(loc + 1)] <- 1
 #Initial abundance set up and penalty for initial value at age being different from mean_N
 loc <- grep("#init_abund_switch", om_rep) #decaying from Rave
 om_rep[(loc + 1)] <- 1
+loc <- grep("#ph_init_abund", om_rep) #turn off estimating init_abund because decay from Rave
+om_rep[(loc + 1)] <- -1
 loc <- grep("#abund_pen_switch", om_rep) #keep off
 om_rep[(loc + 1)] <- 0
 loc <- grep("#wt_abund_pen", om_rep) #keep off (because abund_pen_switch is off)
@@ -735,7 +743,7 @@ shell(paste0("admb ",mod_name)) #build .exe from the .tpl
 
 
 ####
-#If want to remove years from the data
+#If want to remove years from the data <---- NEED TO UPDATE THIS
 ####
 
 if(!is.null(reduce)) { #for removing years from the data
