@@ -232,11 +232,12 @@ dat$Nsurveys = dat$Nsurveys/dat$N_areas
 ####
 
 #Catch - OBS_yield_fleet
+#Model reads as all years (as rows) by fleets (as columns) for area 1, then repeated for area 2, etc.
 loc <- grep("#OBS_yield_fleet$", om_rep)
-temp_val <- data.frame(mapply(c, dat$catch[,1:dat$Nfleet], 
-                  dat$catch[,(dat$Nfleet+1):(dat$Nfleet*2)],
-                  dat$catch[,((dat$Nfleet*2)+1):(dat$Nfleet*3)],
-                  dat$catch[,((dat$Nfleet*3)+1):(dat$Nfleet*4)]))
+temp_val <- data.frame(mapply(c, dat$catch[,grep("_1",colnames(dat$catch))], 
+                  dat$catch[,grep("_2",colnames(dat$catch))],
+                  dat$catch[,grep("_3",colnames(dat$catch))],
+                  dat$catch[,grep("_4",colnames(dat$catch))]))
 new_val <- tidyr::unite(
   round(temp_val, 3), #DECISION - round to 3 decimals
   sep = " ", 
