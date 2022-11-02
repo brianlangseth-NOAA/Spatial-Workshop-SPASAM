@@ -32,43 +32,35 @@ remove_years <- function(no_yrs,mod_name){
   #OBS_survey_fleet_bio
   loc <- grep("#OBS_survey_fleet_bio$", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+ 
   #OBS_survey_fleet_bio_se_EM
   loc <- grep("#OBS_survey_fleet_bio_se_EM", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #OBS_survey_prop
   loc <- grep("#OBS_survey_prop$", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #OBS_survey_prop_N_EM
   loc <- grep("#OBS_survey_prop_N_EM", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #OBS_yield_fleet
   loc <- grep("#OBS_yield_fleet$", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #OBS_yield_fleet_se_EM
   loc <- grep("#OBS_yield_fleet_se_EM", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #OBS_catch_prop
   loc <- grep("#OBS_catch_prop$", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs*orig_flt, orig_yrs, orig_reg, prop = TRUE)
-  #em_dat[(loc+1):(loc+((orig_yrs-no_yrs)*orig_flt))] <- shorten_vector(em_dat, loc, no_yrs*orig_flt, orig_yrs, prop = TRUE)
-  
+
   #OBS_catch_prop_N_EM
   loc <- grep("#OBS_catch_prop_N_EM", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #years_of_tag_releases - Not affected by region
   loc <- grep("#years_of_tag_releases", em_dat)
   em_dat[(loc+1)] <- paste(as.numeric(unlist(strsplit(em_dat[loc+1], split = " "))) - no_yrs, collapse = " ")
@@ -96,13 +88,11 @@ remove_years <- function(no_yrs,mod_name){
   #F
   loc <- grep("#F$", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #Fyear
   loc <- grep("#Fyear", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #biomass_AM
   loc <- grep("#biomass_AM", em_dat)
   em_dat[(loc+1):(loc+orig_reg)] <- shorten_line(em_dat, loc, no_yrs, orig_reg)
@@ -114,23 +104,19 @@ remove_years <- function(no_yrs,mod_name){
   #catch_at_age_fleet_prop
   loc <- grep("#catch_at_age_fleet_prop", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs*OM_flt, orig_yrs, orig_reg, prop = TRUE)
-  #em_dat[(loc+1):(loc+((orig_yrs-no_yrs)*orig_flt))] <- shorten_vector(em_dat, loc, no_yrs*orig_flt, orig_yrs, prop = TRUE)
-  
+
   #yield_fleet
   loc <- grep("#yield_fleet", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #survey_at_age_fleet_prop
   loc <- grep("#survey_at_age_fleet_prop", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #true_survey_fleet_bio
   loc <- grep("#true_survey_fleet_bio", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #harvest_rate_region_bio
   loc <- grep("#harvest_rate_region_bio", em_dat)
   em_dat[(loc+1):(loc+orig_reg)] <- shorten_line(em_dat, loc, no_yrs, orig_reg)
@@ -150,8 +136,7 @@ remove_years <- function(no_yrs,mod_name){
   #T_year
   loc <- grep("#T_year", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #T - length is years*ages*regions
   #Order is all ages for year 1, all ages for year 2, etc. Then blocked by region
   #No function for this so apply manually
@@ -164,8 +149,7 @@ remove_years <- function(no_yrs,mod_name){
   #abund_frac_age_region
   loc <- grep("#abund_frac_age_region", em_dat)
   em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
-  #em_dat[(loc+1):(loc+(orig_yrs-no_yrs))] <- shorten_vector(em_dat, loc, no_yrs, orig_yrs)
-  
+
   #abund_frac_year
   loc <- grep("#abund_frac_year", em_dat)
   em_dat[(loc+1):(loc+orig_reg)] <- shorten_line(em_dat, loc, no_yrs, orig_reg)
@@ -178,7 +162,6 @@ remove_years <- function(no_yrs,mod_name){
 shorten_line <- function(datfile, var_loc, n_yrs, n_reg) {
   
   unlisted <- strsplit(datfile[(var_loc+1):(var_loc+n_reg)], split = " ")
-  #lapply(unlisted, FUN = function(x) unlist(strsplit(x, split = " ")))
   unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
   shortened <- lapply(unlisted, FUN = function(x) paste(x[-c(1:n_yrs)], collapse = " "))
   return(unlist(shortened))
