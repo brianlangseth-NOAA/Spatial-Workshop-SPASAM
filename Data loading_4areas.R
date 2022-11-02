@@ -166,7 +166,7 @@ setwd(file.path(mod_loc, mod_name, "Operating_Model"))
 if(length(list.files())==0){
   file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
   file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
-  file.copy(from = file.path(mod_loc, "Spatial", "Operating_Model", "TIM_OM_all_4area.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
+  file.copy(from = file.path(mod_loc, "Spatial", "Operating_Model", "TIM_OM_all_4area_4fleet.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
   invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
   file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
   print("OM run completed")
