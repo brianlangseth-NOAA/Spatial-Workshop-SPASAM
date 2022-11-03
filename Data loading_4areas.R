@@ -52,6 +52,15 @@ bdat <- biol_dat
 mod_name <- "YFT_4area_4fleets"
 om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo = TRUE)
 
+#Four areas - can adjust for other datasets
+#OM is also set up for 7 fleets so here fleetcombo is FALSE
+load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
+dat <- dat_4A_4
+bdat <- biol_dat 
+mod_name <- "YFT_4area_7fleets"
+om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo = FALSE)
+
+
 
 
 ########################################################################################
@@ -63,83 +72,77 @@ om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo = TRUE)
 #fleetcombo: do you want combine some fleets (TRUE or FALSE); define fleet combos in newfleets list below
 
 mungeData <- function(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE){
-
+  
 ###########
 #if desired then combine data to reduce number of fleets
-#The option for keeping all seven fleets is not set up yet: 
-#The OM is set up for four fleets, will need to edit if want seven fleets
+#The OM is set up either for four fleets or seven fleets, will need to edit if want something different
 ###########
-if(fleetcombo){
-  newfleets=list(c(1,2,7),3,c(4,6),5)
-  fleetsname = c("fishing_gi","fishing_hd","fishing_ll","fishing_other","fishing_bb","fishing_ps","fishing_trol")
-  newfleets_names=lapply(newfleets, FUN = function(x) fleetsname[x])
-  
-  #quick loop to sum catches etc.
-  for(f in 1:length(newfleets)){
-    for(a in 1:dat$N_areas){
-      if(f==1 & a==1){
-        #sum total catches by desired fleet combos and areas
-        newcatch=data.frame(rowSums(dat$catch[
-          intersect(
-            grep(paste(fleetsname[newfleets[f][[1]]],collapse="|"),colnames(dat$catch)),
-            grep(a,colnames(dat$catch)))
-          ]))
-        colnames(newcatch)=paste(c(newfleets[f][[1]],"_",a),collapse="")
+if(fleetcombo == "TRUE") newfleets=list(c(1,2,7),3,c(4,6),5)
+if(fleetcombo == "FALSE") newfleets=list(c(1),c(2),c(3),c(4),c(5),c(6),c(7))
 
-      } else {
-        newcatch=cbind(newcatch,rowSums(dat$catch[
-          intersect(
-            grep(paste(fleetsname[newfleets[f][[1]]],collapse="|"),colnames(dat$catch)),
-            grep(a,colnames(dat$catch)))
-          ]))
-        colnames(newcatch)[length(newfleets)*(f-1)+a]=paste(c(newfleets[f][[1]],"_",a),collapse="")
-        
-      } #end else
-    } #end area for loop
-  } #end fleet for loop
-  
-  #Aggregate by fleet and area, then rename fleets using combined fleet names
-  #Add fleet names and areas to lencomp dataframe for aggregating below
-  dat$lencomp$FltName = dat$fleetnames[dat$lencomp$FltSvy]
-  dat$lencomp$area = dat$fleetinfo$area[dat$lencomp$FltSvy]
-  #Add new fleet numbers based on the fleet names as based on aggregation defined with 'newfleets'
-  dat$lencomp$newfltsvy = unlist(lapply(gsub('.{2}$', '', dat$lencomp$FltName), 
-                                        FUN = function(x) grep(x,newfleets_names)))
-  newlencomp <-
-    dat$lencomp %>%
-    group_by("FltSvyB"=newfltsvy,area,Yr) %>%
-    summarise(across(l10:l200,sum),.groups = "keep")
-  newlencomp$FltSvy=unlist(lapply(newlencomp$FltSvyB,function(x) paste(newfleets[x][[1]],collapse="")))
-  
-  #Add some columns to lencomp and change some to numeric to match original dat
-  newlencomp$FltSvy=as.numeric(newlencomp$FltSvy)
-  newlencomp$Seas=1
-  newlencomp$Gender=0
-  newlencomp$Part=0
-  newlencomp$Nsamp=5
+fleetsname = c("fishing_gi","fishing_hd","fishing_ll","fishing_other","fishing_bb","fishing_ps","fishing_trol")
+newfleets_names=lapply(newfleets, FUN = function(x) fleetsname[x])
 
-  #Add to newcatch to match original dat
-  newcatch=cbind(newcatch,year=dat$catch$year)
-  newcatch=cbind(newcatch,seas=dat$catch$seas)
-  newse_log_catch=dat$se_log_catch[1:length(newfleets)] #define catch se for new catch file
-  
-  #Update variables 
-  sel_switch=paste(ifelse(newfleets[1:length(newfleets)]=="3",1,2),collapse=" ") #define selectivity by fleet
-  nfleets_EM=length(newfleets) #redefine number of fleets
-  
-  #replace values in dat with combined fleet data
-  dat$catch=newcatch
-  dat$se_log_catch=newse_log_catch
-  dat$lencomp=data.frame(newlencomp)
-  dat$Nfleet=nfleets_EM #The data sets number of fleets to be across all areas. TIM needs in each area
-  
-} else { #end if fleetcombo
-  
-  print("OM is set up as four fleets, set 'fleetcombo' to TRUE")
-  
-} #end else for if fleetcombo
-  
+#quick loop to sum catches etc.
+for(f in 1:length(newfleets)){
+  for(a in 1:dat$N_areas){
+    if(f==1 & a==1){
+      #sum total catches by desired fleet combos and areas
+      newcatch=data.frame(rowSums(dat$catch[
+        intersect(
+          grep(paste(fleetsname[newfleets[f][[1]]],collapse="|"),colnames(dat$catch)),
+          grep(a,colnames(dat$catch)))
+      ]))
+      colnames(newcatch)=paste(c(newfleets[f][[1]],"_",a),collapse="")
+      
+    } else {
+      newcatch=cbind(newcatch,rowSums(dat$catch[
+        intersect(
+          grep(paste(fleetsname[newfleets[f][[1]]],collapse="|"),colnames(dat$catch)),
+          grep(a,colnames(dat$catch)))
+      ]))
+      colnames(newcatch)[dat$N_areas*(f-1)+a]=paste(c(newfleets[f][[1]],"_",a),collapse="")
+      
+    } #end else
+  } #end area for loop
+} #end fleet for loop
 
+#Aggregate by fleet and area, then rename fleets using combined fleet names
+#Add fleet names and areas to lencomp dataframe for aggregating below
+dat$lencomp$FltName = dat$fleetnames[dat$lencomp$FltSvy]
+dat$lencomp$area = dat$fleetinfo$area[dat$lencomp$FltSvy]
+#Add new fleet numbers based on the fleet names as based on aggregation defined with 'newfleets'
+dat$lencomp$newfltsvy = unlist(lapply(gsub('.{2}$', '', dat$lencomp$FltName), 
+                                      FUN = function(x) grep(x,newfleets_names)))
+newlencomp <-
+  dat$lencomp %>%
+  group_by("FltSvyB"=newfltsvy,area,Yr) %>%
+  summarise(across(l10:l200,sum),.groups = "keep")
+newlencomp$FltSvy=unlist(lapply(newlencomp$FltSvyB,function(x) paste(newfleets[x][[1]],collapse="")))
+
+#Add some columns to lencomp and change some to numeric to match original dat
+newlencomp$FltSvy=as.numeric(newlencomp$FltSvy)
+newlencomp$Seas=1
+newlencomp$Gender=0
+newlencomp$Part=0
+newlencomp$Nsamp=5
+
+#Add to newcatch to match original dat
+newcatch=cbind(newcatch,year=dat$catch$year)
+newcatch=cbind(newcatch,seas=dat$catch$seas)
+newse_log_catch=dat$se_log_catch[1:length(newfleets)] #define catch se for new catch file
+
+#Update variables 
+sel_switch=paste(ifelse(newfleets[1:length(newfleets)]=="3",1,2),collapse=" ") #define selectivity by fleet
+nfleets_EM=length(newfleets) #redefine number of fleets
+
+#replace values in dat with combined fleet data
+dat$catch=newcatch
+dat$se_log_catch=newse_log_catch
+dat$lencomp=data.frame(newlencomp)
+dat$Nfleet=nfleets_EM #The data sets number of fleets to be across all areas. TIM needs in each area
+
+  
   
 ####################
 #Set up OM.rep file
@@ -166,10 +169,11 @@ setwd(file.path(mod_loc, mod_name, "Operating_Model"))
 if(length(list.files())==0){
   file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
   file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
-  file.copy(from = file.path(mod_loc, "Spatial", "Operating_Model", "TIM_OM_all_4area_4fleet.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
+  if(fleetcombo == TRUE) file.copy(from = file.path(mod_loc, "Spatial", "Operating_Model", "TIM_OM_all_4area_4fleet.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
+  if(fleetcombo == FALSE) file.copy(from = file.path(mod_loc, "Spatial", "Operating_Model", "TIM_OM_all_4area_7fleet.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
   invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
   file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
-  print("OM run completed")
+  writeLines(paste("\nOM run completed with", length(newfleets), "fleets"))
 }
 
 #Access the .rep file to then enter the YFT data
@@ -233,6 +237,7 @@ dat$Nsurveys = dat$Nsurveys/dat$N_areas
 
 #Catch - OBS_yield_fleet
 #Model reads as all years (as rows) by fleets (as columns) for area 1, then repeated for area 2, etc.
+#Append successive areas to the bottom of area 1 catch for each fleet
 loc <- grep("#OBS_yield_fleet$", om_rep)
 temp_val <- data.frame(mapply(c, dat$catch[,grep("_1",colnames(dat$catch))], 
                   dat$catch[,grep("_2",colnames(dat$catch))],
