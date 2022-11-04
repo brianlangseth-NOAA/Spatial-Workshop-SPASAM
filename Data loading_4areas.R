@@ -142,7 +142,7 @@ dat$se_log_catch=newse_log_catch
 dat$lencomp=data.frame(newlencomp)
 dat$Nfleet=nfleets_EM #The data sets number of fleets to be across all areas. TIM needs in each area
 
-  
+
   
 ####################
 #Set up OM.rep file
@@ -223,7 +223,7 @@ om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
 ####
 
 #Estimate movement if 4 area (dont do for move_switch_OM)
-#For testing set to 0 for now 
+#For testing set to 0 for now
 loc <- grep("#move_switch$", om_rep)
 om_rep[loc+1] <- 0
 #om_rep[loc+1] <- 1 # <<<<<<<<<<<<REVISIT ONCE DONE WITH TESTING
@@ -242,16 +242,22 @@ loc <- grep("#OBS_yield_fleet$", om_rep)
 temp_val <- data.frame(mapply(c, dat$catch[,grep("_1",colnames(dat$catch))], 
                   dat$catch[,grep("_2",colnames(dat$catch))],
                   dat$catch[,grep("_3",colnames(dat$catch))],
-                  dat$catch[,grep("_4",colnames(dat$catch))]))
+                  dat$catch[,grep("_4",colnames(dat$catch))])) 
 new_val <- tidyr::unite(
   round(temp_val, 3), #DECISION - round to 3 decimals
   sep = " ", 
   col = "new_val")
 om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val$new_val
 
+#Use the same for true catch
+#This isn't used when diagnostic_switch is 0 (our default) but still change here
+loc <- grep("#yield_fleet", om_rep)
+om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val$new_val
+
 #Catch SE - OBS_yield_fleet_se_EM
+#DECISION - Switch catch SE from dat$se_log_catch (0.01) to 0.2
 loc <- grep("#OBS_yield_fleet_se_EM", om_rep)
-new_val <- rep(paste(dat$se_log_catch, collapse = " "),dat$endyr*dat$N_areas)
+new_val <- rep(paste(rep(0.2,dat$Nfleet), collapse = " "),dat$endyr*dat$N_areas)
 om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 
 
@@ -317,7 +323,7 @@ alk[dat$Nages,noentry[-1]]=1 #set the last columns to be 1 for the last age
 alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
 #Convert length comps to age comps
 #DECISION - assume OBS_catch_prop is blocked in each year for all fleets (year 1 for all fleets, then year 2 for all fleets, etc.)
-#TO DO - confirm these are blocked by area, which is what Im assuming (see closed issue #31)
+#Confirmed these are blocked by area (see closed issue #31)
 #agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
 agecomp <- as.matrix(dat$lencomp[which(colnames(dat$lencomp) %in% paste0("l",seq(10,200,by=5)))]) %*% t(alk)
 agecomp_prop <- agecomp/rowSums(agecomp)
@@ -339,9 +345,11 @@ om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet*dat$N_areas)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
 #DECISION - assume all years within area 1 are first, then all years in area 2, etc.
+#DECISION - replace values in dat$lencomp$Nsamp (N = 5) with N = 15 and for fleet 5 with N = 25
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr*dat$N_areas, ncol = dat$Nfleet) #Set up for all years and fleets by area
-tmp_val[cbind(dat$endyr * (dat$lencomp$area-1) + dat$lencomp$Yr, dat$lencomp$FltSvyB)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
+tmp_val[cbind(dat$endyr * (dat$lencomp$area-1) + dat$lencomp$Yr, dat$lencomp$FltSvyB)] <- 15 #Assign for just the years and fleets in YFT data, set to 15
+tmp_val[,which(newfleets %in% 5)]  <- replace(tmp_val[,which(newfleets %in% 5)], tmp_val[,which(newfleets %in% 5)] == 15, 25) #For fleet 5 change to 25
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 
@@ -387,6 +395,11 @@ tmp_val[dat$endyr*(overlap_survey_comp[,"area"] - 1) + overlap_survey_comp[,"Yr"
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr*dat$Nsurveys*dat$N_areas)] <- new_val
 
+#Set the same for true comp
+#This isn't used when diagnostic_switch is 0 (our default) but still change here
+loc <- grep("#survey_at_age_fleet_prop", om_rep)
+om_rep[(loc + 1):(loc + dat$endyr*dat$Nsurveys*dat$N_areas)] <- new_val
+
 #Sample size of comps - #OBS_survey_prop_N_EM
 #DECISION - copying from proportions in fleet 3 catch for only years that overlap with cpue years.  
 #Believe these to be the same as the fleet comps. Can set survey select to that of catch.
@@ -414,7 +427,7 @@ om_rep[(loc + 1):(loc + dat$N_areas)] <- new_val
 
 
 ####
-#Tagging <<<<<<<<<<<<<< Need to do tagging yet
+#Tagging
 ####
 
 #Have tag switch on - #do_tag
@@ -586,9 +599,9 @@ om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 # om_rep[(loc + 1)] <- new_val
 
 
-##
+####
 #Selectivity and number of fleets
-##
+####
 
 #Update selectivity switches to differ by fleet
 loc <- grep("#select_switch$", om_rep)
@@ -602,10 +615,16 @@ om_rep[loc+1] <- "1"
 new_val <- grep("3", newfleets) #mirroing original fleet 3, which is now fleet 2. 0 is no mirroring
 om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
 
+#Update selectivity phases for logistic
+#DECISION - selectivity phase is 2 for logistic
+loc <- grep("#ph_sel_log", om_rep)
+om_rep[loc+1] <- "2"
+
 #Update selectivity phases for double normal
+#DECISION - selectivity phase is 2 for double logistic
 if(length(grep("2", sel_switch))>0){ #If any sel_switch is 2 (double logistic)
   loc <- grep("#ph_sel_dubl$", om_rep)
-  om_rep[loc+1] <- "5"
+  om_rep[loc+1] <- "2"
 }
 
 #If have mirror then turn off survey selectivity and set weight of survey age comp to zero
@@ -619,9 +638,9 @@ if(new_val != "0"){
 }
 
 
-##
+####
 #Biological data
-##
+####
 
 #Steepness TRUE - #steep
 loc <- grep("#steep$", om_rep)
@@ -679,9 +698,9 @@ tmp_val <- bdat$M
 om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 
-##
+####
 #Switches for penalties and weighting
-##
+####
 
 #Penalty for recruitment being different from Rave_mean
 loc <- grep("#Rave_pen_switch", om_rep)
@@ -694,6 +713,7 @@ loc <- grep("#wt_tag", om_rep)
 om_rep[(loc + 1)] <- 1
 
 #Initial abundance set up and penalty for initial value at age being different from mean_N
+#<<<<<<<<<<<<<<<<<<<REVISIT ONCE DONE WITH TESTING. Should turn on, especially if start at year 105 
 loc <- grep("#init_abund_switch", om_rep) #decaying from Rave
 om_rep[(loc + 1)] <- 1
 loc <- grep("#ph_init_abund", om_rep) #turn off estimating init_abund because decay from Rave
@@ -704,9 +724,9 @@ loc <- grep("#wt_abund_pen", om_rep) #keep off (because abund_pen_switch is off)
 om_rep[(loc + 1)] <- 0.1
 
 
-##
+####
 #Bounds
-##
+####
 
 #Balance initial abundance bounds so that init_abund_devs in report become 1 if fixed (so they are set to their midpoint before exp)
 loc <- grep("#lb_init_dist", om_rep)
@@ -723,6 +743,7 @@ loc <- grep("#lb_q", om_rep)
 om_rep[(loc + 1)] <- -15
 
 #Selectivity parameters
+#DECISION - Based on exploring overall comp patterns
 loc <- grep("lb_sel_beta", om_rep) #lower bounds for all fleets and surveys
 om_rep[(loc + 1)] <- -5
 loc <- grep("ub_sel_beta", om_rep) #uppers bounds for all fleets and surveys
@@ -733,8 +754,27 @@ loc <- grep("^#sel_beta2.*start$", om_rep) #start for fleet and survey
 om_rep[(loc + 1)] <- 2
 loc <- grep("^#sel_beta3.*start$", om_rep) #start for fleet and survey
 om_rep[(loc + 1)] <- -0.7
+loc <- grep("^#sel_beta3_start", om_rep) #readjust start for fleet
+om_rep[(loc + 1)] <- 0.006
 loc <- grep("^#sel_beta4.*start$", om_rep) #start for fleet and survey
 om_rep[(loc + 1)] <- 1
+loc <- grep("^#sel_beta4_start", om_rep) #readjust start for fleet
+om_rep[(loc + 1)] <- 0.1
+
+
+####
+#Phases
+####
+
+#DECISION - Set recruitment phase to 3 (selectivity is set in selectivity section)
+loc <- grep("#ph_rec", om_rep)
+om_rep[loc+1] <- "3"
+
+#DECISION - Set F phase to 4
+loc <- grep("#ph_F", om_rep)
+om_rep[loc+1] <- "4"
+
+
 
 ##Done Munging##
 
