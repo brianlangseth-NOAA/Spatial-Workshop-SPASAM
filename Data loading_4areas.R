@@ -381,7 +381,8 @@ om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 loc <- grep("#OBS_survey_prop$", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr*dat$Nsurveys*dat$N_areas, ncol = dat$Nages) #Set up for all years and surveys
 #Comp data for fleet 3 that overlaps with years and areas of CPUE data.
-overlap_survey_comp <- agecomp_yr[grep("3",agecomp_yr[,"FltSvy"]),][apply(agecomp_yr[grep("3",agecomp_yr[,"FltSvy"]),c("Yr","area")], 1, FUN = paste, collapse ="") %in% apply(cbind(dat$CPUE$year,as.numeric(dat$CPUE$index)-dat$Nfleet*dat$N_areas),1,FUN=paste0,collapse=""),] 
+#sub() function component extracts last value in fleetnames, which is the area
+overlap_survey_comp <- agecomp_yr[grep("3",agecomp_yr[,"FltSvy"]),][apply(agecomp_yr[grep("3",agecomp_yr[,"FltSvy"]),c("Yr","area")], 1, FUN = paste, collapse ="") %in% apply(cbind(dat$CPUE$year,sub('.*(?=.$)', '', dat$fleetnames[as.numeric(dat$CPUE$index)],perl=T)),1,FUN=paste0,collapse=""),] 
 tmp_val[dat$endyr*(overlap_survey_comp[,"area"] - 1) + overlap_survey_comp[,"Yr"],] <- overlap_survey_comp[,-which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy","area"))] 
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + dat$endyr*dat$Nsurveys*dat$N_areas)] <- new_val
