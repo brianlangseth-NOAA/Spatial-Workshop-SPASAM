@@ -60,6 +60,13 @@ bdat <- biol_dat
 mod_name <- "YFT_4area_7fleets"
 om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo = FALSE)
 
+#Four areas - can adjust for other datasets
+#OM is also set up for 7 fleets so here fleetcombo is FALSE
+load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
+dat <- dat_4A_4
+bdat <- biol_dat 
+mod_name <- "YFT_4area_7fleets_105"
+om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = FALSE)
 
 
 
