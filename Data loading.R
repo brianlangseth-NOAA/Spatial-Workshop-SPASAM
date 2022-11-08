@@ -49,7 +49,7 @@ load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
 dat <- dat_1A_4
 bdat <- biol_dat 
 mod_name <- "YFT_1area"
-om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE,fleetcombo=FALSE)
+om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE)
 
 
 #One area with 100 runs - ESS_05 is the base
@@ -237,6 +237,8 @@ new_val <- tidyr::unite(
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val$new_val
 
 #Catch SE - OBS_yield_fleet_se_EM
+#DECISION - Switch catch SE from dat$se_log_catch (0.01) to 0.2, vastly improved run-time and other diagnostics
+dat$se_log_catch=dat$se_log_catch*20
 loc <- grep("#OBS_yield_fleet_se_EM", om_rep)
 new_val <- rep(paste(dat$se_log_catch, collapse = " "),dat$endyr)
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
@@ -332,6 +334,8 @@ if(add_lines<0){
 om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
+#DECISION: change ESS to 15 for all fleets except fleet 5 (in the 7 fleet setup), which =25 to improve run time
+dat$lencomp$Nsamp=ifelse(grepl("5",dat$lencomp$FltSvy),25,15)
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nfleet) #Set up for all years and fleets
 tmp_val[cbind(dat$lencomp$Yr, dat$lencomp$FltSvyB)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
@@ -612,10 +616,16 @@ om_rep[loc+1] <- "1"
 new_val <- grep("3", newfleets) #mirroring original fleet 3, which is now fleet 2. 0 is no mirroring
 om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
 
+#Update selectivity phases for logistic
+#DECISION - selectivity phase is 2 to help with gradient and run-time; see issue #37 on github
+loc <- grep("#ph_sel_log$", om_rep)
+om_rep[loc+1] <- "2"
+
 #Update selectivity phases for double normal
+#DECISION: selectivity phase is 2 to help with gradient and run-time; see issue #37 on github
 if(length(grep("2", sel_switch))>0){ #If any sel_switch is 2 (double logistic)
   loc <- grep("#ph_sel_dubl$", om_rep)
-  om_rep[loc+1] <- "5"
+  om_rep[loc+1] <- "2"
 }
 
 #If have mirror then turn off survey selectivity and set weight of survey age comp to zero
@@ -695,22 +705,26 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 ##
 
 #Penalty for recruitment being different from Rave_mean
+#DECISION - dont penalize recruitment being different from Rave_mean, to speed up runtime
 loc <- grep("#Rave_pen_switch", om_rep)
-om_rep[(loc + 1)] <- 1
+om_rep[(loc + 1)] <- 0
 loc <- grep("#wt_Rave_pen", om_rep)
-om_rep[(loc + 1)] <- 10
+om_rep[(loc + 1)] <- 0
 
 #Tagging weight to include tag likelihood 
 loc <- grep("#wt_tag", om_rep)
 om_rep[(loc + 1)] <- 0
 
 #Initial abundance set up and penalty for initial value at age being different from mean_N
+#DECISION: estimate init_abund so switch to 0 and phase to 2
 loc <- grep("#init_abund_switch", om_rep) #decaying from Rave
-om_rep[(loc + 1)] <- 1
+om_rep[(loc + 1)] <- 0
+loc <- grep("#ph_init_abund", om_rep)
+om_rep[(loc + 1)] <- 2
 loc <- grep("#abund_pen_switch", om_rep) #keep off
 om_rep[(loc + 1)] <- 0
 loc <- grep("#wt_abund_pen", om_rep) #keep off
-om_rep[(loc + 1)] <- 0.1
+om_rep[(loc + 1)] <- 0
 
 
 ##
@@ -741,9 +755,30 @@ om_rep[(loc + 1)] <- 0
 loc <- grep("^#sel_beta2.*start$", om_rep) #start for fleet and survey
 om_rep[(loc + 1)] <- 2
 loc <- grep("^#sel_beta3.*start$", om_rep) #start for fleet and survey
-om_rep[(loc + 1)] <- -0.7
+om_rep[(loc + 1)] <- 0.006
 loc <- grep("^#sel_beta4.*start$", om_rep) #start for fleet and survey
-om_rep[(loc + 1)] <- 1
+om_rep[(loc + 1)] <- 0.1
+
+#Fishing mortality
+#DECISION - to speed up runtime and improve gradient; see issue #37 in github
+loc <- grep("#lb_F$", om_rep)
+om_rep[(loc + 1)] <- -15
+loc <- grep("ub_F$", om_rep)
+om_rep[(loc + 1)] <- 1.5
+
+
+##
+#Phases
+##
+
+#changes here help with gradient and run-time; see issue #37 on github
+
+#DECISION - Set recruitment phase to 3 and F phase to 4 (selectivity is set in selectivity section)
+loc <- grep("#ph_rec$", om_rep)
+om_rep[loc+1] <- "3"
+loc <- grep("#ph_F$", om_rep)
+om_rep[loc+1] <- "4"
+
 
 ##Done Munging##
 

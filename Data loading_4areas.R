@@ -624,7 +624,7 @@ om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
 
 #Update selectivity phases for logistic
 #DECISION - selectivity phase is 2 for logistic
-loc <- grep("#ph_sel_log", om_rep)
+loc <- grep("#ph_sel_log$", om_rep)
 om_rep[loc+1] <- "2"
 
 #Update selectivity phases for double normal
@@ -710,6 +710,7 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 ####
 
 #Penalty for recruitment being different from Rave_mean
+#TO DO - REVISIT this choice. We dont penalize for 1 area model. Unsure of effect on 4 area model. Right now keeping
 loc <- grep("#Rave_pen_switch", om_rep)
 om_rep[(loc + 1)] <- 1
 loc <- grep("#wt_Rave_pen", om_rep)
@@ -720,7 +721,7 @@ loc <- grep("#wt_tag", om_rep)
 om_rep[(loc + 1)] <- 1
 
 #Initial abundance set up and penalty for initial value at age being different from mean_N
-#<<<<<<<<<<<<<<<<<<<REVISIT ONCE DONE WITH TESTING. Should turn on, especially if start at year 105 
+#TO DO - REVISIT ONCE DONE WITH TESTING. Should turn on, especially if start at year 105. 1 area model has on and phase set to 2
 loc <- grep("#init_abund_switch", om_rep) #decaying from Rave
 om_rep[(loc + 1)] <- 1
 loc <- grep("#ph_init_abund", om_rep) #turn off estimating init_abund because decay from Rave
@@ -760,25 +761,26 @@ om_rep[(loc + 1)] <- 0
 loc <- grep("^#sel_beta2.*start$", om_rep) #start for fleet and survey
 om_rep[(loc + 1)] <- 2
 loc <- grep("^#sel_beta3.*start$", om_rep) #start for fleet and survey
-om_rep[(loc + 1)] <- -0.7
-loc <- grep("^#sel_beta3_start", om_rep) #readjust start for fleet
 om_rep[(loc + 1)] <- 0.006
 loc <- grep("^#sel_beta4.*start$", om_rep) #start for fleet and survey
-om_rep[(loc + 1)] <- 1
-loc <- grep("^#sel_beta4_start", om_rep) #readjust start for fleet
 om_rep[(loc + 1)] <- 0.1
+
+#Fishing mortality
+#DECISION - to speed up runtime and improve gradient; see issue #37 in github
+loc <- grep("#lb_F$", om_rep)
+om_rep[(loc + 1)] <- -15
+loc <- grep("ub_F$", om_rep)
+om_rep[(loc + 1)] <- 1.5
 
 
 ####
 #Phases
 ####
 
-#DECISION - Set recruitment phase to 3 (selectivity is set in selectivity section)
-loc <- grep("#ph_rec", om_rep)
+#DECISION - Set recruitment phase to 3 and F phase to 4 (selectivity is set in selectivity section)
+loc <- grep("#ph_rec$", om_rep)
 om_rep[loc+1] <- "3"
-
-#DECISION - Set F phase to 4
-loc <- grep("#ph_F", om_rep)
+loc <- grep("#ph_F$", om_rep)
 om_rep[loc+1] <- "4"
 
 
