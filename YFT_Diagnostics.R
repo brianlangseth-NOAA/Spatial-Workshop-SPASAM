@@ -63,8 +63,8 @@ resid.switch=2
 
 #name ESTIMATION MODEL of the .exe
 #EM_name<-EM_name ###name of .dat, .tpl., .rep, etc.
-EM_name<-"YFT_1area" 
-
+EM_name<-"YFT_4area_7fleets_105_update" 
+EM_name<-"YFT_4area_4fleets"
 
 #set the directory where the run is held
 
@@ -87,6 +87,10 @@ EM_name<-"YFT_1area"
 #EM Location
 #EM_direct<-paste0(direct_master,"\\Estimation_Model",sep="") #location of run(s)
 EM_direct<-"C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Newest data copy of MaxPeriod18"
+EM_direct<-"C:\\Users\\Brian.Langseth\\Desktop\\test\\Newest tagging data\\explorations\\18_fixSel_lowerBounds"
+EM_direct<-"C:\\Users\\Brian.Langseth\\Desktop\\test\\Newest tagging data\\explorations\\23_short105_estSel_Rdevs_Ndevs"
+EM_direct<-paste0("C:\\Users\\Brian.Langseth\\Desktop\\test\\",EM_name,"\\Estimation_Model")
+
 
 ###########################################################################
 
@@ -314,18 +318,33 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
   f.select<-data.frame(Flt=rep(c(1:fleets),each=na),Age=rep(ages,fleets))
   f.select<-f.select[order(f.select$Age),]
   f.select=data.frame(f.select,Select_Est = as.vector(t(out$selectivity_age)))#, Select_T=as.vector(t(out$selectivity_age_TRUE)))
-  f.select.plot<-melt(f.select,id=c("Flt","Age"))
+  f.select$Region<-rep(c(1:nreg),each = fleets*na)
+  f.select.plot<-melt(f.select,id=c("Flt","Age","Region"))
   f.select.plot$Flt<-as.factor(f.select$Flt)
+  f.select.plot$Region<-as.factor(f.select$Region)
   
+  #Add options for different facet grids (if multiple regions grid by flt x region)
+  if(nreg>1){
   f.select.p<-ggplot(f.select.plot,aes(Age, value))+
     geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
-    facet_wrap(~Flt)+
+    facet_grid(Flt~Region)+
     scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","True"))+
     scale_linetype_manual(values=c(1,2),labels = c("Estimated","True"))+
     ylab("Selectivity")+
     diag_theme+
     theme(legend.position = c(1, 0), legend.justification = c(1,0))+
-    ggtitle("Fishery Selectivity")
+    ggtitle("Fishery Selectivity")}
+  
+  if(nreg==1){
+    f.select.p<-ggplot(f.select.plot,aes(Age, value))+
+      geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
+      facet_wrap(~Flt)+
+      scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","True"))+
+      scale_linetype_manual(values=c(1,2),labels = c("Estimated","True"))+
+      ylab("Selectivity")+
+      diag_theme+
+      theme(legend.position = c(1, 0), legend.justification = c(1,0))+
+      ggtitle("Fishery Selectivity")}
   
   ########################
   #Survey Selectivity
@@ -358,25 +377,40 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
   #if(nreg_OM==nreg){ 
    # F.year<-data.frame(Year=rep(years,nreg), Reg=rep(c(1:nreg),each=nyrs),F_year=f.max)#, F_year_T=f.max.t)
   #}
-  F.year<-data.frame(Flt=rep(c(1:fleets),each=nyrs),Year=rep(years,fleets))
+  F.year<-data.frame(Flt=rep(c(1:fleets),each=nyrs*nreg),Year=rep(years,fleets*nreg),Region=rep(c(1:nreg),each=nyrs))
   #F.year<-F.year[order(F.year$Year),]
   F.year=data.frame(F.year,F_Est = as.vector(f.fleet))#, Select_T=as.vector(t(out$selectivity_age_TRUE)))
-  F.plot<-melt(F.year,id=c("Flt","Year"))
+  F.plot<-melt(F.year,id=c("Flt","Year","Region"))
   F.plot$Flt<-as.factor(F.plot$Flt)
+  F.plot$Region<-as.factor(F.plot$Region)
   
   #F.plot<-melt(F.year,id=c("Reg","Year"))
   #F.plot$Reg<-as.factor(F.plot$Reg)
   
+  #Add options for different facet grids (if multiple regions grid by flt x region)
+  if(nreg>1){
   F.plot.p<-ggplot(F.plot,aes(Year,value))+
     geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
     theme_bw()+
-    facet_wrap(~Flt)+
+    facet_grid(Flt~Region)+
     scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","True"))+
     scale_linetype_manual(values=c(1,2),labels = c("Estimated","True"))+
     ylab("F")+
     diag_theme+
     theme(legend.position = c(1, 1), legend.justification = c(1,1))+
-    ggtitle("Fully selected F by Year")
+    ggtitle("Fully selected F by Year")}
+  
+  if(nreg==1){
+    F.plot.p<-ggplot(F.plot,aes(Year,value))+
+      geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
+      theme_bw()+
+      facet_grid(~Flt)+
+      scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","True"))+
+      scale_linetype_manual(values=c(1,2),labels = c("Estimated","True"))+
+      ylab("F")+
+      diag_theme+
+      theme(legend.position = c(1, 1), legend.justification = c(1,1))+
+      ggtitle("Fully selected F by Year")}
   
   ############################################################
   ########## Fits to data ####################################
@@ -386,19 +420,23 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
   # Yield
   
   #need to fix this for fleets as areas 
-  Y.year<-data.frame(Flt=rep(c(1:fleets),each=nyrs),Year=rep(years,fleets),Estimated=as.vector(out$yieldN_fleet),Observed=as.vector(out$OBS_yield_fleet))
+  Y.year<-data.frame(Flt=rep(c(1:fleets),each=nyrs*nreg),Year=rep(years,fleets*nreg),Region = rep(c(1:nreg),each=nyrs),Estimated=as.vector(out$yieldN_fleet),Observed=as.vector(out$OBS_yield_fleet))
   
-  Y.year.plot<-melt(Y.year, id=c("Flt","Year"))
+  Y.year.plot<-melt(Y.year, id=c("Flt","Year","Region"))
   #Fleet.a=rep(c(1:fleets),each=nyrs)
   #Fleet=rep(Fleet.a,times=nreg)
   #Y.year.plot$Fleet=Fleet
   #Y.year.plot$variable=gsub(paste0(".",'[0-9]'),'',Y.year.plot$variable)
+  #Sum of observed catches by fleet and region - to id where catches exist
+  obsYield.fleet.region<-Y.year.plot %>% subset(variable=="Observed") %>% group_by(Flt,Region) %>%summarise(sum=sum(value))
   
+  #Add options for different facet grids (if multiple regions grid by flt x region)
+  if(nreg>1){
   yield.p<-ggplot(Y.year.plot,aes(Year,value,shape=variable))+
     geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
     geom_point(size=2, alpha = 0.5)+
     scale_shape_manual(values=c(NA,16),labels = c("Estimated","Observed"))+
-    facet_wrap(~Flt)+
+    facet_grid(Flt~Region)+
     scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","Observed"))+
     scale_linetype_manual(values=c(1,0),labels = c("Estimated","Observed"))+
     ylab("Yield (N)")+
@@ -410,14 +448,40 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
     geom_point(size=2, alpha = 0.5)+
     scale_shape_manual(values=c(NA,16),labels = c("Estimated","Observed"))+
-    facet_wrap(~Flt, scales = "free")+
+    facet_grid(Flt~Region, scales = "free")+
     scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","Observed"))+
     scale_linetype_manual(values=c(1,0),labels = c("Estimated","Observed"))+
     ylab("Yield (N)")+
     diag_theme+
     theme(legend.position = c(1, 1), legend.justification = c(1,1))+
     ggtitle("Yield Zoomed In")+
-    coord_cartesian(ylim=c(0,7500))
+    coord_cartesian(ylim=c(0,7500))}
+  
+  if(nreg==1){
+    yield.p<-ggplot(Y.year.plot,aes(Year,value,shape=variable))+
+      geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
+      geom_point(size=2, alpha = 0.5)+
+      scale_shape_manual(values=c(NA,16),labels = c("Estimated","Observed"))+
+      facet_wrap(~Flt)+
+      scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","Observed"))+
+      scale_linetype_manual(values=c(1,0),labels = c("Estimated","Observed"))+
+      ylab("Yield (N)")+
+      diag_theme+
+      theme(legend.position = c(1, 1), legend.justification = c(1,1))+
+      ggtitle("Yield")
+    
+    yield.p.zoomIn<-ggplot(Y.year.plot,aes(Year,value,shape=variable))+
+      geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
+      geom_point(size=2, alpha = 0.5)+
+      scale_shape_manual(values=c(NA,16),labels = c("Estimated","Observed"))+
+      facet_wrap(~Flt, scales = "free")+
+      scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","Observed"))+
+      scale_linetype_manual(values=c(1,0),labels = c("Estimated","Observed"))+
+      ylab("Yield (N)")+
+      diag_theme+
+      theme(legend.position = c(1, 1), legend.justification = c(1,1))+
+      ggtitle("Yield Zoomed In")+
+      coord_cartesian(ylim=c(0,7500))}
   
   # calculate residuals
   
@@ -432,21 +496,35 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
   
   #y.resid.p<-melt(Y.year[,c(1,2,5)],id=c("Reg","Year")) #JJD
   #y.resid.p<-melt(Y.year[,c(1,2,(ncol(Y.year)-(fleets-1)):ncol(Y.year))], id=c("Reg","Year"))
-  y.resid.p<-melt(Y.year,id=c("Flt","Year"))
+  y.resid.p<-melt(Y.year,id=c("Flt","Year","Region"))
   #y.resid.p$Fleet=Fleet #Fleet defined above for Y.year.plot
   #y.resid.p$variable=gsub(paste0(".",'[0-9]'),'',y.resid.p$variable)
   y.resid.p=y.resid.p[y.resid.p$variable=="resid",]
   #
+  #Add options for different facet grids (if multiple regions grid by flt x region)
+  if(nreg>1){
   Y.resid.plot<-ggplot(y.resid.p,aes(Year,value))+
     geom_hline(aes(yintercept=0), col = "grey20", lty = 2)+
     geom_point(aes(color=value),size=2, alpha = 0.9, pch=16)+
     theme_bw()+
     scale_color_gradient2(low="red",mid="grey",high ="blue")+
     ylab("Difference (True-Estimated)")+
-    facet_wrap(~Flt)+
+    facet_grid(Flt~Region)+
     diag_theme+
     theme(legend.position = "none", legend.justification = c(1,1))+
-    ggtitle("Yield Residuals")
+    ggtitle("Yield Residuals")}
+  
+  if(nreg==1){
+    Y.resid.plot<-ggplot(y.resid.p,aes(Year,value))+
+      geom_hline(aes(yintercept=0), col = "grey20", lty = 2)+
+      geom_point(aes(color=value),size=2, alpha = 0.9, pch=16)+
+      theme_bw()+
+      scale_color_gradient2(low="red",mid="grey",high ="blue")+
+      ylab("Difference (True-Estimated)")+
+      facet_wrap(~Flt)+
+      diag_theme+
+      theme(legend.position = "none", legend.justification = c(1,1))+
+      ggtitle("Yield Residuals")}  
   
   ################
   # Survey Index
@@ -542,9 +620,9 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
   ######################
   #fishery age comps
   
-  fishery.comps.resid<-data.frame(Year=rep(years,fleets),Flt=rep(c(1:fleets),each=nyrs))
-  fishery.comps.resid=fishery.comps.resid[with(fishery.comps.resid,order(Year)),]
-  Age=rep(ages,(fleets*nyrs))
+  fishery.comps.resid<-data.frame(Year=rep(years,fleets*nreg),Flt=rep(c(1:fleets),each=nyrs),Region=rep(c(1:nreg),each=nyrs*fleets))
+  fishery.comps.resid=fishery.comps.resid[with(fishery.comps.resid,order(Region,Year)),]
+  Age=rep(ages,(fleets*nyrs*nreg))
   Age=Age[order(Age)]
   fishery.comps.resid=cbind(fishery.comps.resid,"variable"=Age)
 
@@ -564,21 +642,24 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
 
     fishery.long.obs.prop <- 
       fishery.long.obs %>%
-      group_by(Flt) %>%
+      group_by(Flt,Region) %>%
       mutate("prop" = values/sum(values))
+    
+    #Sum of observed comps by fleet and region - to id where comps exist
+    obsComp.fleet.region <- fishery.long.obs.prop %>% group_by(Flt,Region) %>% summarise(sum=sum(prop))
     
     #Currently, this is the aggregate across all years, not just the years with observations
     #This is not the plot that is output
     fishery.long.exp.prop <- 
       fishery.long.exp %>%
-      group_by(Flt) %>%
+      group_by(Flt,Region) %>%
       mutate("prop" = values/sum(values))
     
     agg.fishery.comp.plot <- 
       ggplot() +
       geom_bar(data = fishery.long.obs.prop, aes(variable,prop, fill = "gray"), stat = "Identity") +
-      geom_line(data = aggregate(prop~Flt+variable, fishery.long.exp.prop, sum), aes(variable, prop, color = "red"), lwd=line.wd) +
-      facet_wrap(~Flt, scale = "free") +
+      geom_line(data = aggregate(prop~Flt+Region+variable, fishery.long.exp.prop, sum), aes(variable, prop, color = "red"), lwd=line.wd) +
+      facet_grid(Flt~Region, scale = "free") +
       scale_color_manual(values = c(e.col),labels = c("Estimated"))+
       scale_fill_manual(values = c("gray35"),labels = c("Observed"))+
       ylab("Proportion")+
@@ -590,10 +671,10 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
             legend.text = element_text(size = 12))
     
     #DECISION - This is aggregated across only those years that have observations. This is the plot outputted
-    obs.yr.flt <- unique(fishery.long.obs.prop[which(fishery.long.obs.prop$values>0),c("Year","Flt")]) %>% mutate("obs" = 1)
+    obs.yr.flt <- unique(fishery.long.obs.prop[which(fishery.long.obs.prop$values>0),c("Year","Flt","Region")]) %>% mutate("obs" = 1)
     fishery.long.exp.prop.subset <- 
       fishery.long.exp %>%
-      group_by(Flt) %>%
+      group_by(Flt,Region) %>%
       left_join(obs.yr.flt) %>%
       filter(obs == 1) %>%
       mutate("prop" = values/sum(values))
@@ -601,8 +682,8 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     agg.fishery.comp.plot.subset <- 
       ggplot() +
       geom_bar(data = fishery.long.obs.prop, aes(variable,prop, fill = "gray"), stat = "Identity") +
-      geom_line(data = aggregate(prop~Flt+variable, fishery.long.exp.prop.subset, sum), aes(variable, prop, color = "red"), lwd=line.wd) +
-      facet_wrap(~Flt, scale = "free") +
+      geom_line(data = aggregate(prop~Flt+Region+variable, fishery.long.exp.prop.subset, sum), aes(variable, prop, color = "red"), lwd=line.wd) +
+      facet_grid(Flt~Region, scale = "free") +
       scale_color_manual(values = c(e.col),labels = c("Estimated"))+
       scale_fill_manual(values = c("gray35"),labels = c("Observed"))+
       ylab("Proportion")+
@@ -619,6 +700,7 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     comp.data.avail <- 
       ggplot(data = fishery.long.obs[fishery.long.obs$values>0, ], aes(x = Year, y = Flt))+
       geom_point(shape = 1, size = 2)+
+      facet_wrap(~Region)+
       ylab("Fleet")+
       xlab("Year")+
       ggtitle("Years with comp data by fleet")
@@ -649,7 +731,7 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     scale_fill_gradient2(low="red",mid="grey99",high ="blue")+
     scale_y_continuous(trans = "reverse")+
     labs(x="Age", y="Year", title="Fishery Age Comp Residuals") +
-    facet_grid(Flt~.)+
+    facet_grid(Flt~Region)+
     theme_bw() + 
     theme(axis.text.x=element_text(size=9, angle=0, vjust=0.3),
           axis.text.y=element_text(size=9),
@@ -667,7 +749,7 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     geom_point(alpha = 0.7) +
     scale_size_area(max_size = 5, trans = "identity", name="Residual") +
     scale_shape_manual(values = c(19, 1), labels = c("Obs-Exp > 0", "Obs-Exp < 0")) +
-    facet_grid(Flt~.) +
+    facet_grid(Flt~Region) +
     labs(shape = "Direction")+
     labs(x="Age", y="Year", title="Fishery Age Comp Residuals Fleets") +
     theme_bw() + 
@@ -683,7 +765,7 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     geom_point(alpha = 0.7) +
     scale_size_area(max_size = 5, trans = "identity", name="Residual") +
     scale_shape_manual(values = c(19, 1), labels = c("Obs-Exp > 0", "Obs-Exp < 0")) +
-    facet_grid(Flt~.) +
+    facet_grid(Flt~Region) +
     labs(shape = "Direction")+
     labs(x="Age", y="Year", title="Fishery Age Comp Residuals Fleets") +
     theme_bw() + 
@@ -695,7 +777,7 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     theme(strip.text.x = element_text(size = 10, colour = "black", face="bold"))
   
 
-  #yearly fishery age comps
+  #yearly fishery age comps - Only set up for 1 region model
   for(i in 1:ceiling(nyrs/5)){
     assign(paste0("yr.fishery.comp.plot",i), 
       ggplot() +
@@ -784,13 +866,13 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
   
   grid.arrange(ncol=1, comp.data.avail)
   
-  if(plot.comps){  
+  if(plot.comps){  #Only set up for a 1 region model
     for(i in 1:ceiling(nyrs/5)){
       grid.arrange(ncol=1, get(paste0("yr.fishery.comp.plot",i)))
     }
   }
   
-  if(plot.yearly.abund){
+  if(plot.yearly.abund){ #Only set up for a 1 region model
     for(i in 1:ceiling(nyrs/10)){
       grid.arrange(ncol=1, get(paste0("yearly.ab",i)))
     }
