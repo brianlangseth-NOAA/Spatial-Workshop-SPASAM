@@ -65,6 +65,7 @@ resid.switch=2
 #EM_name<-EM_name ###name of .dat, .tpl., .rep, etc.
 EM_name<-"YFT_4area_7fleets_105_update" 
 EM_name<-"YFT_4area_4fleets"
+EM_name<-"YFT_1area_4fleets"
 
 #set the directory where the run is held
 
@@ -404,7 +405,7 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
     F.plot.p<-ggplot(F.plot,aes(Year,value))+
       geom_line(aes(col = variable,linetype=variable), stat = "identity", lwd=line.wd)+
       theme_bw()+
-      facet_grid(~Flt)+
+      facet_wrap(~Flt)+
       scale_color_manual(values = c(e.col,t.col),labels = c("Estimated","True"))+
       scale_linetype_manual(values=c(1,2),labels = c("Estimated","True"))+
       ylab("F")+
@@ -679,6 +680,8 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
       filter(obs == 1) %>%
       mutate("prop" = values/sum(values))
     
+    #Add options for different facet grids (if multiple regions grid by flt x region)
+    if(nreg>1){
     agg.fishery.comp.plot.subset <- 
       ggplot() +
       geom_bar(data = fishery.long.obs.prop, aes(variable,prop, fill = "gray"), stat = "Identity") +
@@ -692,8 +695,23 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
       diag_theme+
       theme(legend.position = c(0.5, 0.15),
             legend.spacing.y = unit(0.01,"cm"),
-            legend.text = element_text(size = 12))
+            legend.text = element_text(size = 12))}
     
+    if(nreg==1){
+      agg.fishery.comp.plot.subset <- 
+        ggplot() +
+        geom_bar(data = fishery.long.obs.prop, aes(variable,prop, fill = "gray"), stat = "Identity") +
+        geom_line(data = aggregate(prop~Flt+Region+variable, fishery.long.exp.prop.subset, sum), aes(variable, prop, color = "red"), lwd=line.wd) +
+        facet_wrap(~Flt, scale = "free") +
+        scale_color_manual(values = c(e.col),labels = c("Estimated"))+
+        scale_fill_manual(values = c("gray35"),labels = c("Observed"))+
+        ylab("Proportion")+
+        xlab("Ages")+
+        ggtitle("Catch comps aggregated across years with observed data")+
+        diag_theme+
+        theme(legend.position = c(0.5, 0.15),
+              legend.spacing.y = unit(0.01,"cm"),
+              legend.text = element_text(size = 12))}
     
     ###
     #Add plot of years/fleets with comps data avilable
