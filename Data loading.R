@@ -48,8 +48,8 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
 dat <- dat_1A_4
 bdat <- biol_dat 
-mod_name <- "YFT_1area"
-om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE)
+mod_name <- "YFT_1area_7fleets_12_hess"
+om_rep <- mungeData(mod_name, reduce = 105, run = TRUE,fleetcombo=FALSE) #reduce = 105
 
 
 #One area with 100 runs - ESS_05 is the base
@@ -59,17 +59,29 @@ load(file.path(data_loc,'YFT_1area_observations_1_100_ESS_05.RData'))
 for(i in 1:100){
   dat <- get(paste0("dat_1A_",i))
   mod_name <- paste0("YFT_1area_100sets",i)
-  om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
+  om_rep <- mungeData(mod_name, reduce = 105, run = TRUE, fleetcombo = FALSE)
   cat(paste0("\n Data set",i),"\n ")
 }
 
+
+#Redo "bad" runs from one area attempt - ESS_05 is the base
+load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
+bdat <- biol_dat #this is only available in the single dataset
+load(file.path(data_loc,'YFT_1area_observations_1_100_ESS_05.RData'))
+for(j in 1:nrow(badruns)){
+  i=badruns[j,"i"]
+  dat <- get(paste0("dat_1A_",i))
+  mod_name <- paste0("YFT_1area_100sets",i)
+  om_rep <- mungeData(mod_name, reduce = 105, run = TRUE)
+  cat(paste0("\n Data set",i),"\n ")
+}
 
 #One area 4 fleets with years reduced
 load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
 dat <- dat_1A_4
 bdat <- biol_dat 
-mod_name <- "YFT_1area_4fleets"
-om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo=TRUE)
+mod_name <- "YFT_temp"
+om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo=TRUE)
 
 
 ########################################################################################
@@ -136,7 +148,7 @@ if(fleetcombo){
   
 } else { #end if fleetcombo
   newfleets=list(c(1),c(2),c(3),c(4),c(5),c(6),c(7))
-  sel_switch=c("2 2 1 2 2 2 2")
+  sel_switch=c("2 2 1 1 2 1 2")
   nfleets_EM=7
   
 } #end else for if fleetcombo
@@ -237,7 +249,7 @@ new_val <- tidyr::unite(
 om_rep[(loc + 1):(loc + dat$endyr)] <- new_val$new_val
 
 #Catch SE - OBS_yield_fleet_se_EM
-#DECISION - Switch catch SE from dat$se_log_catch (0.01) to 0.2, vastly improved run-time and other diagnostics
+#DECISION: change this se to 0.2, vastly improved run-time and other diagnostics
 dat$se_log_catch=dat$se_log_catch*20
 loc <- grep("#OBS_yield_fleet_se_EM", om_rep)
 new_val <- rep(paste(dat$se_log_catch, collapse = " "),dat$endyr)
@@ -334,8 +346,9 @@ if(add_lines<0){
 om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
-#DECISION: change ESS to 15 for all fleets except fleet 5 (in the 7 fleet setup), which =25 to improve run time
-dat$lencomp$Nsamp=ifelse(grepl("5",dat$lencomp$FltSvy),25,15)
+#DECISION: change ESS to 15 for all fleets except fleet 5 (in the 7 fleet setup), which =25
+#fleet 7 selectivity got wonky and so also make that fleet 25 ESS.
+dat$lencomp$Nsamp=ifelse(dat$lencomp$FltSvyB %in% c(1,2,3,4,6),15,25)
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nfleet) #Set up for all years and fleets
 tmp_val[cbind(dat$lencomp$Yr, dat$lencomp$FltSvyB)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
@@ -407,7 +420,10 @@ om_rep[(loc + 1)] <- new_val
 
 #Have tag switch on - #do_tag
 loc <- grep("#do_tag$", om_rep)
-om_rep[(loc + 1)] <- 1
+om_rep[(loc + 1)] <- 0
+
+loc <- grep("#do_tag_mult$", om_rep)
+om_rep[(loc + 1)] <- 0
 
 #Number of years with tag releases - #nyrs_release
 loc <- grep("#nyrs_release", om_rep)
@@ -616,16 +632,10 @@ om_rep[loc+1] <- "1"
 new_val <- grep("3", newfleets) #mirroring original fleet 3, which is now fleet 2. 0 is no mirroring
 om_rep <- append(om_rep, rbind("#survey_mirror",c(new_val)), after = loc+1)
 
-#Update selectivity phases for logistic
-#DECISION - selectivity phase is 2 to help with gradient and run-time; see issue #37 on github
-loc <- grep("#ph_sel_log$", om_rep)
-om_rep[loc+1] <- "2"
-
 #Update selectivity phases for double normal
-#DECISION: selectivity phase is 2 to help with gradient and run-time; see issue #37 on github
 if(length(grep("2", sel_switch))>0){ #If any sel_switch is 2 (double logistic)
   loc <- grep("#ph_sel_dubl$", om_rep)
-  om_rep[loc+1] <- "2"
+  om_rep[loc+1] <- "5"
 }
 
 #If have mirror then turn off survey selectivity and set weight of survey age comp to zero
@@ -705,7 +715,6 @@ om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 ##
 
 #Penalty for recruitment being different from Rave_mean
-#DECISION - dont penalize recruitment being different from Rave_mean, to speed up runtime
 loc <- grep("#Rave_pen_switch", om_rep)
 om_rep[(loc + 1)] <- 0
 loc <- grep("#wt_Rave_pen", om_rep)
@@ -717,14 +726,18 @@ om_rep[(loc + 1)] <- 0
 
 #Initial abundance set up and penalty for initial value at age being different from mean_N
 #DECISION: estimate init_abund so switch to 0 and phase to 2
-loc <- grep("#init_abund_switch", om_rep) #decaying from Rave
+loc <- grep("#init_abund_switch", om_rep) 
 om_rep[(loc + 1)] <- 0
-loc <- grep("#ph_init_abund", om_rep)
-om_rep[(loc + 1)] <- 2
 loc <- grep("#abund_pen_switch", om_rep) #keep off
 om_rep[(loc + 1)] <- 0
 loc <- grep("#wt_abund_pen", om_rep) #keep off
 om_rep[(loc + 1)] <- 0
+loc <- grep("#ph_init_abund", om_rep)
+om_rep[(loc + 1)] <- 2
+
+##Change F start
+loc <- grep("#F_start", om_rep) 
+om_rep[(loc + 1)] <- -5
 
 
 ##
@@ -743,43 +756,48 @@ om_rep[(loc + 1)] <- 10
 
 #Catchability - reduce lower bound
 loc <- grep("#lb_q", om_rep)
-om_rep[(loc + 1)] <- -15
+om_rep[(loc + 1)] <- -20
+loc <- grep("#q_start", om_rep)
+om_rep[(loc + 1)] <- -14
+
 
 #Selectivity parameters
 loc <- grep("lb_sel_beta", om_rep) #lower bounds for all fleets and surveys
-om_rep[(loc + 1)] <- -5
+om_rep[(loc + 1)] <- -10
 loc <- grep("ub_sel_beta", om_rep) #uppers bounds for all fleets and surveys
-om_rep[(loc + 1)] <- 3
+om_rep[(loc + 1)] <- 10
 loc <- grep("^#sel_beta1.*start$", om_rep) #start for fleet and survey
-om_rep[(loc + 1)] <- 0
+om_rep[(loc + 1)] <- 0.2
 loc <- grep("^#sel_beta2.*start$", om_rep) #start for fleet and survey
 om_rep[(loc + 1)] <- 2
 loc <- grep("^#sel_beta3.*start$", om_rep) #start for fleet and survey
-om_rep[(loc + 1)] <- 0.006
+om_rep[(loc + 1)] <- -2
 loc <- grep("^#sel_beta4.*start$", om_rep) #start for fleet and survey
-om_rep[(loc + 1)] <- 0.1
+om_rep[(loc + 1)] <- -0.1
 
-#Fishing mortality
-#DECISION - to speed up runtime and improve gradient; see issue #37 in github
+
+#DECISION: all changes between here and next # help with gradient and run-time; see issue #37 on github
+#estimate selectivity parameters in 2nd phase
+loc <- grep("#ph_sel_log$", om_rep)
+om_rep[(loc + 1)] <- 2
+loc <- grep("#ph_sel_dubl$", om_rep)
+om_rep[(loc + 1)] <- 2
+
+#recruitment phase 3
+loc <- grep("#ph_rec$", om_rep)
+om_rep[(loc + 1)] <- 3
+
+#f phase 4; lb and ub
+loc <- grep("#ph_F$", om_rep)
+om_rep[(loc + 1)] <- 4
+
 loc <- grep("#lb_F$", om_rep)
 om_rep[(loc + 1)] <- -15
+
 loc <- grep("ub_F$", om_rep)
 om_rep[(loc + 1)] <- 1.5
 
-
-##
-#Phases
-##
-
-#changes here help with gradient and run-time; see issue #37 on github
-
-#DECISION - Set recruitment phase to 3 and F phase to 4 (selectivity is set in selectivity section)
-loc <- grep("#ph_rec$", om_rep)
-om_rep[loc+1] <- "3"
-loc <- grep("#ph_F$", om_rep)
-om_rep[loc+1] <- "4"
-
-
+#
 ##Done Munging##
 
 
