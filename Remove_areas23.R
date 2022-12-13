@@ -23,8 +23,9 @@ remove_areas23 <- function(mod_name, rm_regions){
   
   #Number of regions, and update to account for fewer regions now
   loc <- grep("#nregions_EM", em_dat)
-  orig_reg <- as.numeric(em_dat[loc+1])
-  em_dat[(loc+1)] <- orig_reg - length(rm_regions)
+  orig_reg <<- as.numeric(em_dat[loc+1])
+  new_reg <- orig_reg - length(rm_regions)
+  em_dat[(loc+1)] <- new_reg
   
   loc <- grep("#nregions_OM", em_dat)
   em_dat[(loc+1)] <- orig_reg - length(rm_regions)
@@ -82,7 +83,7 @@ remove_areas23 <- function(mod_name, rm_regions){
 
   #OBS_yield_fleet
   #Based on Figure 1 at https://aaronmberger-nwfsc.github.io/Spatial-Assessment-Modeling-Workshop/articles/OM_description_YFT.html
-  #combine regions 1 and 2 together and regions 3 and 4 together
+  #DECISION:combine regions 1 and 2 together and regions 3 and 4 together
   loc <- grep("#OBS_yield_fleet$", em_dat)
   #Combine
   unlisted <- strsplit(em_dat[(loc+1):(loc+(151*orig_reg))], split = " ")
@@ -127,12 +128,13 @@ remove_areas23 <- function(mod_name, rm_regions){
   em_dat <- shorten_lines(em_dat, loc, rep = nyr_tag_rel, rm_regions)
   
   #input_T_EM 
-  #<<<<<<<<<<<<<<<<<<<<<NEED TO DO<<<<<<<<<<<<<<<<
   loc <- grep("#input_T_EM", em_dat)
+  em_dat <- shorten_matrix(em_dat, loc, rep = orig_ages, rm_regions)
 
   #OBS_tag_prop_final
-  #<<<<<<<<<<<<<<<<<<<<<NEED TO DO<<<<<<<<<<<<<<<<
   loc <- grep("#OBS_tag_prop_final$", em_dat)
+  em_dat <- shorten_lines(em_dat, loc, rep = nyr_tag_rel*orig_ages, rm_regions)
+  em_dat[(loc+1):(loc+nyr_tag_rel*orig_ages*new_reg)] <- combine_tags(em_dat, loc, nyr_tag_rel, orig_ages, rm_regions)
   
   #OBS_tag_prop_final_no_age
   loc <- grep("#OBS_tag_prop_final_no_age$", em_dat)
@@ -212,80 +214,94 @@ remove_areas23 <- function(mod_name, rm_regions){
   loc <- grep("#recruits_BM", em_dat)
   em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
   
-  #>>>>>>>>>>>>>>> CONTINUE HERE
-  
   #F
   loc <- grep("#F$", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs, rm_regions)
 
   #Fyear
   loc <- grep("#Fyear", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs, rm_regions)
 
   #biomass_AM
   loc <- grep("#biomass_AM", em_dat)
-  em_dat[(loc+1):(loc+orig_reg)] <- shorten_line(em_dat, loc, no_yrs, orig_reg)
-  
-  #biomass_population - Based on populations not regions so not affected by region
-  loc <- grep("#biomass_population", em_dat)
-  em_dat[(loc+1)] <- shorten_line(em_dat, loc, no_yrs, 1) #only one line
+  em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
   
   #catch_at_age_fleet_prop
   loc <- grep("#catch_at_age_fleet_prop", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs*OM_flt, orig_yrs, orig_reg, prop = TRUE)
-
-  #yield_fleet
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs*orig_flt, rm_regions)
+  
+  #yield_fleet - This is TRUE so we dont use this in the model. 
+  #Remove the desired regions without combining
   loc <- grep("#yield_fleet", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs, rm_regions)
 
   #survey_at_age_fleet_prop
   loc <- grep("#survey_at_age_fleet_prop", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs, rm_regions)
 
   #true_survey_fleet_bio
   loc <- grep("#true_survey_fleet_bio", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs, rm_regions)
 
   #harvest_rate_region_bio
   loc <- grep("#harvest_rate_region_bio", em_dat)
-  em_dat[(loc+1):(loc+orig_reg)] <- shorten_line(em_dat, loc, no_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
   
   #depletion_region
   loc <- grep("#depletion_region", em_dat)
-  em_dat[(loc+1):(loc+orig_reg)] <- shorten_line(em_dat, loc, no_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
   
   #SSB_region
   loc <- grep("#SSB_region", em_dat)
-  em_dat[(loc+1):(loc+orig_reg)] <- shorten_line(em_dat, loc, no_yrs, orig_reg)
-  
-  #Bratio_population - Based on populations not regions so not affected by region
-  loc <- grep("#Bratio_population", em_dat)
-  em_dat[(loc+1)] <- shorten_line(em_dat, loc, no_yrs, 1) #only one line
+  em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
   
   #T_year
   loc <- grep("#T_year", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
+  em_dat <- shorten_matrix(em_dat, loc, rep = orig_ages, rm_regions)
 
+  #selectivity_age
+  loc <- grep("#selectivity_age", em_dat)
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_ages, rm_regions)
+  
+  #survey_selectivity_age
+  loc <- grep("#survey_selectivity_age", em_dat)
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_ages, rm_regions)
+  
+  #TRUE_tag_prop
+  loc <- grep("#TRUE_tag_prop$", em_dat)
+  em_dat <- shorten_lines(em_dat, loc, rep = nyr_tag_rel*orig_ages, rm_regions)
+  
+  #TRUE_tag_prop_no_age
+  loc <- grep("#TRUE_tag_prop_no_age", em_dat)
+  em_dat <- shorten_lines(em_dat, loc, rep = nyr_tag_rel, rm_regions)
+  
   #T - length is years*ages*regions
   #Order is all ages for year 1, all ages for year 2, etc. Then blocked by region
   #No function for this so apply manually
   loc <- grep("#T$", em_dat)
-  tmp <- em_dat[(loc+1):(loc+(orig_yrs*orig_ages*orig_reg))]
-  em_dat <- em_dat[-c((loc+1):(loc+(orig_yrs*orig_ages*orig_reg)))] 
-  tmp_shortened <- tmp[-c((1:(no_yrs*orig_ages)) + rep(orig_yrs*orig_ages*(0:(orig_reg-1)), each = no_yrs*orig_ages))] #remove no_yrs worth of data for each region
-  em_dat <- append(em_dat, tmp_shortened, after = loc)
+  em_dat <- shorten_matrix(em_dat, loc, rep = orig_yrs*orig_ages, rm_regions)
+  
+  #report_rate_TRUE
+  #Not repeated by region so remove n_reg regions for all lines
+  loc <- grep("#report_rate_TRUE", em_dat)
+  em_dat[(loc+1):(loc+nyr_tag_rel)] <- shorten_multlines(em_dat, loc, len = nyr_tag_rel, rm_regions)
   
   #abund_frac_age_region
   loc <- grep("#abund_frac_age_region", em_dat)
-  em_dat <- shorten_vector(em_dat, loc, no_yrs, orig_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs, rm_regions)
 
   #abund_frac_year
   loc <- grep("#abund_frac_year", em_dat)
-  em_dat[(loc+1):(loc+orig_reg)] <- shorten_line(em_dat, loc, no_yrs, orig_reg)
+  em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
+  
+  #abund_frac_region
+  loc <- grep("#abund_frac_region", em_dat)
+  em_dat[(loc+1)] <- shorten_line(em_dat, loc, rm_regions)
   
   return(em_dat)
   
 }
+
 
 #Entries within one line of length regions
 shorten_line <- function(datfile, var_loc, n_reg) {
@@ -295,11 +311,25 @@ shorten_line <- function(datfile, var_loc, n_reg) {
   shortened <- unlist(unlisted)[-n_reg]
   return(paste(shortened, collapse = " "))
   
-}  
+} 
+
+#Entries within 'len' lines of length regions that are NOT reproduced by region
+shorten_multlines <- function(datfile, var_loc, len, n_reg) {
+  
+  unlisted <- strsplit(datfile[(var_loc+1):(var_loc+len)], split = " ")
+  unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
+  shortened <- lapply(unlisted, FUN = function(x) x[-n_reg])
+  shortened <- unlist(lapply(shortened, FUN = function(x) paste(x, collapse = " ")))
+  
+  return(shortened)
+  
+} 
 
 #Entries within one line repeated rep times for each region 
 #n_reg is coded as  2 to 3, functionality for regions not in sequence is not available
 shorten_lines <- function(datfile, var_loc, rep, n_reg) {
+  
+  #o_reg <<- orig_reg
   
   unlisted <- strsplit(datfile[(var_loc+1):(var_loc+(rep*orig_reg))], split = " ")
   unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
@@ -314,40 +344,51 @@ shorten_lines <- function(datfile, var_loc, rep, n_reg) {
   
 }  
 
-
-#Entries with years all within one line, possibly repeated by region
-shorten_line_old <- function(datfile, var_loc, n_yrs, n_reg) {
+#Entries within one line of length regions repeated rep times for each region 
+#n_reg is coded as  2 to 3, functionality for regions not in sequence is not available
+shorten_matrix <- function(datfile, var_loc, rep, n_reg) {
   
-  unlisted <- strsplit(datfile[(var_loc+1):(var_loc+n_reg)], split = " ")
+  #o_reg <<- orig_reg
+  
+  #Remove n_reg blocks
+  unlisted <- strsplit(datfile[(var_loc+1):(var_loc+(rep*orig_reg))], split = " ")
   unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
-  shortened <- lapply(unlisted, FUN = function(x) paste(x[-c(1:n_yrs)], collapse = " "))
-  return(unlist(shortened))
-  
-}  
+  shortened <- unlisted[-(((n_reg[1]-1)*rep+1):(n_reg[length(n_reg)]*rep))] #remove the entries from the regions desired
 
-#Entries with years on each line
-shorten_vector <- function(datfile, var_loc, n_yrs, o_yrs, n_reg, prop = FALSE) {
+  #Remove n_reg in each line of the now shortened matrix
+  shortened2 <- lapply(shortened, FUN = function(x) x[-n_reg])
+  shortened2 <- unlist(lapply(shortened2, FUN = function(x) paste(x, collapse = " ")))
   
-  #Setup variables based on the datfile
+  datfile <- datfile[-c((var_loc+1):(var_loc+(rep*orig_reg)))] #temporarily remove repeated lines
   
-  #Number of fleets (for reference)
-  temp_loc <- grep("#nfleets_EM", datfile)
-  o_flt <- as.numeric(datfile[(temp_loc+1)])
-  
-  #Temporarily remove data within element
-  if(!prop) { #if not proportions length is yrs*regions
-    unlisted <- datfile[(var_loc+1):(var_loc+o_yrs*n_reg)] 
-    datfile <- datfile[-c((var_loc+1):(var_loc+o_yrs*n_reg))]
-    shortened <- unlisted[-c((1:n_yrs) + rep(o_yrs*(0:(n_reg-1)), each = n_yrs))] #remove first n_yrs of data for each region
-  }
-  if(prop) { #if proportions length is yrs*flt*regions
-    unlisted <- datfile[(var_loc+1):(var_loc+(o_yrs*o_flt*n_reg))] 
-    datfile <- datfile[-c((var_loc+1):(var_loc+(o_yrs*o_flt*n_reg)))] 
-    shortened <- unlisted[-c((1:n_yrs) + rep(o_yrs*o_flt*(0:(n_reg-1)), each = n_yrs))] #remove first n_yrs*Nfleet of data for each region
-  }
-  
-  new_datfile <- append(datfile, shortened, after = var_loc) #append remaining years back into element
+  new_datfile <- append(datfile, shortened2, after = var_loc) #append remaining years back into element
   
   return(new_datfile)
   
+}  
+
+#Entries for tag props. Rrecaptures are spread across regions within each row.
+#If reduce the number of regions, need to combine recaptures (combine columns within a row)
+#Hard code for region 2 and 3
+#DECISION: combine regions 1 and 2 together and regions 3 and 4 together
+combine_tags <- function(datfile, var_loc, nyr_rel, n_age, n_reg){
+  
+  tag_data <- strsplit(datfile[(var_loc+1):(var_loc+(nyr_rel*n_age*(orig_reg-length(n_reg))))], split = " ")
+  tag_data <- lapply(tag_data, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
+  
+  nt <- (length(tag_data[[1]])-1)/orig_reg #number of recapture years within a region
+  
+  #Sum regions 1 and 2, and 3 and 4. Add final column of non-recaptured proportion
+  tag_data_num <- lapply(tag_data, FUN = as.numeric)
+  tag_data <- lapply(tag_data_num, FUN = function(x) c(x[1:nt] + x[(nt+1):(2*nt)],
+                                                       x[(2*nt+1):(3*nt)] + x[(3*nt+1):(4*nt)],
+                                                       x[4*nt+1]))
+  new_tag_data <- lapply(tag_data, FUN = paste, collapse = " ")
+  
+  
+  return(unlist(new_tag_data))
+  
 }
+
+
+
