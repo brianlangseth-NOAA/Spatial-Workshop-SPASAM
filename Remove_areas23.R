@@ -1,10 +1,11 @@
 #Functions to remove regions from the .dat file
 #Pulls from .dat file in current directory
 #
-#Assigns catches in region 2 and 3 to region 1
-#Would need to update the code if want to remove non-sequential regions
-#Recaptures in region 2 and 3 are assumed to be not recaptured
-#Excludes other data in region 2 and 3 altogether.
+#Assigns catches in region 2 to region 1, and catches in region 3 to region 4
+#Sum tag proportions from region 2 and region 1, and from region 3 and region 4
+#Comps in region 2 and 3 are excluded
+#Would need to update the code if want to remove non-sequential regions and
+#update combining tag data if regions other than regions 2 and 3 are removed
 
 remove_areas23 <- function(mod_name, rm_regions){
   
@@ -139,6 +140,7 @@ remove_areas23 <- function(mod_name, rm_regions){
   #OBS_tag_prop_final_no_age
   loc <- grep("#OBS_tag_prop_final_no_age$", em_dat)
   em_dat <- shorten_lines(em_dat, loc, rep = nyr_tag_rel, rm_regions)
+  em_dat[(loc+1):(loc+nyr_tag_rel*new_reg)] <- combine_tags(em_dat, loc, nyr_tag_rel, 1, rm_regions) #need to set ages to 1 because not indexed by ages
   
   #input_Rec_Prop_EM
   loc <- grep("#input_Rec_Prop_EM", em_dat)
@@ -257,7 +259,7 @@ remove_areas23 <- function(mod_name, rm_regions){
   
   #T_year
   loc <- grep("#T_year", em_dat)
-  em_dat <- shorten_matrix(em_dat, loc, rep = orig_ages, rm_regions)
+  em_dat <- shorten_matrix(em_dat, loc, rep = orig_yrs, rm_regions)
 
   #selectivity_age
   loc <- grep("#selectivity_age", em_dat)
@@ -270,10 +272,12 @@ remove_areas23 <- function(mod_name, rm_regions){
   #TRUE_tag_prop
   loc <- grep("#TRUE_tag_prop$", em_dat)
   em_dat <- shorten_lines(em_dat, loc, rep = nyr_tag_rel*orig_ages, rm_regions)
+  em_dat[(loc+1):(loc+nyr_tag_rel*orig_ages*new_reg)] <- combine_tags(em_dat, loc, nyr_tag_rel, orig_ages, rm_regions)
   
   #TRUE_tag_prop_no_age
   loc <- grep("#TRUE_tag_prop_no_age", em_dat)
   em_dat <- shorten_lines(em_dat, loc, rep = nyr_tag_rel, rm_regions)
+  em_dat[(loc+1):(loc+nyr_tag_rel*new_reg)] <- combine_tags(em_dat, loc, nyr_tag_rel, 1, rm_regions) #need to set ages to 1 because not indexed by ages
   
   #T - length is years*ages*regions
   #Order is all ages for year 1, all ages for year 2, etc. Then blocked by region
@@ -328,9 +332,7 @@ shorten_multlines <- function(datfile, var_loc, len, n_reg) {
 #Entries within one line repeated rep times for each region 
 #n_reg is coded as  2 to 3, functionality for regions not in sequence is not available
 shorten_lines <- function(datfile, var_loc, rep, n_reg) {
-  
-  #o_reg <<- orig_reg
-  
+
   unlisted <- strsplit(datfile[(var_loc+1):(var_loc+(rep*orig_reg))], split = " ")
   unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
   shortened <- unlisted[-(((n_reg[1]-1)*rep+1):(n_reg[length(n_reg)]*rep))] #remove the entries from the regions desired
@@ -347,8 +349,6 @@ shorten_lines <- function(datfile, var_loc, rep, n_reg) {
 #Entries within one line of length regions repeated rep times for each region 
 #n_reg is coded as  2 to 3, functionality for regions not in sequence is not available
 shorten_matrix <- function(datfile, var_loc, rep, n_reg) {
-  
-  #o_reg <<- orig_reg
   
   #Remove n_reg blocks
   unlisted <- strsplit(datfile[(var_loc+1):(var_loc+(rep*orig_reg))], split = " ")

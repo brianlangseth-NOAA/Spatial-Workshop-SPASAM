@@ -65,8 +65,16 @@ om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo = FALSE)
 load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
 dat <- dat_4A_4
 bdat <- biol_dat 
-mod_name <- "YFT_4area_7fleets_105"
+mod_name <- "YFT_4area_7fleets_105_update"
 om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = FALSE)
+
+#Two areas - apply script that takes 4 area data and reduces to two
+#OM is also set up for 7 fleets so here fleetcombo is FALSE
+load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
+dat <- dat_4A_4
+bdat <- biol_dat 
+mod_name <- "YFT_2area_7fleets"
+om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = FALSE, remove_regions = c(2,3))
 
 
 
@@ -78,7 +86,7 @@ om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = FALSE)
 #run: whether to run the EM
 #fleetcombo: do you want combine some fleets (TRUE or FALSE); define fleet combos in newfleets list below
 
-mungeData <- function(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE){
+mungeData <- function(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE, remove_regions = NULL){
   
 ###########
 #if desired then combine data to reduce number of fleets
@@ -799,7 +807,7 @@ shell(paste0("admb ",mod_name)) #build .exe from the .tpl
 
 
 ####
-#If want to remove years from the data <---- NEED TO UPDATE THIS
+#If want to remove years from the data
 ####
 
 if(!is.null(reduce)) { #for removing years from the data
@@ -809,6 +817,22 @@ if(!is.null(reduce)) { #for removing years from the data
   writeLines(new_dat, file.path(getwd(), paste0(mod_name,".dat")))
   om_rep <- new_dat
   print(paste("First", reduce, "years of data removed"))
+}
+
+
+####
+#If want to reduce the number of areas in the model
+#Right now regions removed are hard coded to be regions 2 and 3
+####
+#DECISION: Combine regions 1 and 2 together and regions 3 and 4 together
+#DECISION: Sum landings and tag props in combined regions, exclude comps and other data sources
+if(!is.null(remove_regions)) {
+  source(file.path(code_loc,"Remove_areas23.R"))
+  #Read in existing model .dat file
+  new_dat <- remove_areas23(mod_name, remove_regions)
+  writeLines(new_dat, file.path(getwd(), paste0(mod_name,".dat")))
+  om_rep <- new_dat
+  print(paste("Areas 2 and 3 removed"))
 }
 
 
