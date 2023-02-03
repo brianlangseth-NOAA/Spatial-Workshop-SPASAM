@@ -293,16 +293,39 @@ remove_areas23 <- function(mod_name, rm_regions){
   em_dat[(loc+1):(loc+nyr_tag_rel)] <- shorten_multlines(em_dat, loc, len = nyr_tag_rel, rm_regions)
   
   #abund_frac_age_region
+  #Rather than just removing regions need to combine with existing so hard code for region 2 and 3
   loc <- grep("#abund_frac_age_region", em_dat)
-  em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs, rm_regions)
-
+  #em_dat <- shorten_lines(em_dat, loc, rep = orig_yrs, rm_regions)
+  unlisted <- strsplit(em_dat[(loc+1):(loc+(orig_yrs*orig_reg))], split = " ")
+  unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
+  numbers <- lapply(unlisted, FUN = as.numeric) 
+  shortened <- c(mapply("+", numbers[1:orig_yrs], numbers[orig_yrs + 1:orig_yrs], SIMPLIFY = FALSE), #combine regions 1 and 2
+                 mapply("+", numbers[2*orig_yrs + 1:orig_yrs], numbers[3*orig_yrs + 1:orig_yrs], SIMPLIFY = FALSE)) #combine regions 3 and 4
+  shortened <- unlist(lapply(shortened, FUN = function(x) paste(x, collapse = " ")))
+  new_datfile <- em_dat[-c((loc+1):(loc+(orig_yrs*orig_reg)))] #temporarily remove repeated lines
+  em_dat <- append(new_datfile, shortened, after = loc) #append remaining years back into element
+  
   #abund_frac_year
+  #Rather than just removing regions need to combine with existing so hard code for region 2 and 3
   loc <- grep("#abund_frac_year", em_dat)
-  em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
+  #em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
+  unlisted <- strsplit(em_dat[(loc+1):(loc+(1*orig_reg))], split = " ")
+  unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
+  numbers <- as.numeric(unlist(unlisted))
+  shortened <- list((numbers[1:orig_yrs] + numbers[orig_yrs + (1:orig_yrs)]), (numbers[2*orig_yrs + (1:orig_yrs)] + numbers[3*orig_yrs + (1:orig_yrs)]))
+  shortened <- unlist(lapply(shortened, FUN = function(x) paste(x, collapse = " ")))
+  new_datfile <- em_dat[-c((loc+1):(loc+(1*orig_reg)))] #temporarily remove repeated lines
+  em_dat <- append(new_datfile, shortened, after = loc) #append remaining years back into element
   
   #abund_frac_region
+  #Hard code for region 2 and 3
   loc <- grep("#abund_frac_region", em_dat)
-  em_dat[(loc+1)] <- shorten_line(em_dat, loc, rm_regions)
+  #em_dat[(loc+1)] <- shorten_line(em_dat, loc, rm_regions)
+  unlisted <- strsplit(em_dat[(loc+1)], split = " ")
+  unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
+  numbers <- as.numeric(unlist(unlisted))
+  shortened <- paste(c(numbers[1]+numbers[2],numbers[3]+numbers[4]), collapse = " ")
+  em_dat[(loc+1)] <- shortened
   
   return(em_dat)
   
