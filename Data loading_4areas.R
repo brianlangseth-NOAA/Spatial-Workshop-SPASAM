@@ -76,6 +76,13 @@ bdat <- biol_dat
 mod_name <- "YFT_2area_7fleets_F0.0001"
 om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = FALSE, remove_regions = c(2,3))
 
+#Two areas and 4 fleets - apply script that takes 4 area data and reduces to two
+load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
+dat <- dat_4A_4
+bdat <- biol_dat 
+mod_name <- "YFT_2area_4fleets_F0.0001"
+om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = TRUE, remove_regions = c(2,3))
+
 
 
 ########################################################################################

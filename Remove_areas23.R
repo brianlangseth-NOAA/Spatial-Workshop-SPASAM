@@ -147,9 +147,11 @@ remove_areas23 <- function(mod_name, rm_regions){
   em_dat <- shorten_lines(em_dat, loc, rep=1, rm_regions)
   
   #input_selectivity_EM
-  #These are entered over multiple lines (4 to be exact), so each region is repeated over 4*fleet lines
+  #These are entered over multiple lines (4 to be exact for 7 fleet model and 7 for 4 fleet model), 
+  #so each region is repeated over 4*fleet lines or 7*fleet lines
   loc <- grep("#input_selectivity_EM", em_dat)
-  em_dat <- shorten_lines(em_dat, loc, rep=4*orig_flt, rm_regions)
+  if(orig_flt == 7)  em_dat <- shorten_lines(em_dat, loc, rep=4*orig_flt, rm_regions)
+  if(orig_flt == 4)  em_dat <- shorten_lines(em_dat, loc, rep=7*orig_flt, rm_regions)
   
   #input_survey_selectivity_EM
   loc <- grep("#input_survey_selectivity_EM", em_dat)
