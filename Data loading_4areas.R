@@ -327,22 +327,25 @@ Latage=c(22,
          144.168)
 #Function to calculate probability in a given length interval
 getprob=function(L1=NULL,L2=NULL,meanL=NULL,sd=NULL){
-  #prob=pnorm(L2,mean=meanL,sd=sd)-pnorm(L1,mean=meanL,sd=sd)
-  prob=plnorm(L2,meanlog=meanL,sdlog=sd)-plnorm(L1,meanlog=meanL,sdlog=sd)
+  prob=pnorm(L2,mean=meanL,sd=sd)-pnorm(L1,mean=meanL,sd=sd) #for normal error around lengths
+  #prob=plnorm(L2,meanlog=meanL,sdlog=sd)-plnorm(L1,meanlog=meanL,sdlog=sd) #for lognormal error around lengths
   return(prob)
 }
 #matrix to hold alk
 alk=matrix(NA,nrow=length(Latage),ncol=(length(lengths)-1),dimnames = list(paste0("a",seq(1:length(Latage))),paste0("l",(lengths[1:(length(lengths)-1)]))))
-for(a in 1:length(Latage)){ #loop over 28 ages and the length bins and calculate probility for each bin
+for(a in 1:length(Latage)){ #loop over 28 ages and the length bins and calculate probability for each bin
   for(l in 1:(length(lengths)-1)){
-    alk[a,l]=getprob(L1=lengths[l],L2=lengths[l+1],meanL=log(Latage[a]),sd=0.1)
+    alk[a,l]=getprob(L1=lengths[l],L2=lengths[l+1],meanL=Latage[a],sd=0.1) #for normal error around lengths
+    #alk[a,l]=getprob(L1=lengths[l],L2=lengths[l+1],meanL=log(Latage[a]),sd=0.1) #for lognormal error around lengths
   }
 }
-alk=round(alk,digits=2)
 noentry = which(colSums(alk)==0) #determine which lengths dont have any entries
-alk[1,noentry[1]]=1 #set the first column to be 1 for the first age 1
-alk[dat$Nages,noentry[-1]]=1 #set the last columns to be 1 for the last age
+#alk[1,noentry[1]]=1 #set the first column to be 1 for the first age 1 if lognormal
+alk[1,noentry[c(1,2)]]=1 #set the first column to be 1 for the first age 1 if normal
+#alk[dat$Nages,noentry[-1]]=1 #set the last columns to be 1 for the last age if lognormal
+alk[dat$Nages,noentry[-c(1,2)]]=1 #set the last columns to be 1 for the last age if normal
 alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
+alk=round(alk,digits=2)
 #Convert length comps to age comps
 #DECISION - assume OBS_catch_prop is blocked in each year for all fleets (year 1 for all fleets, then year 2 for all fleets, etc.)
 #Confirmed these are blocked by area (see closed issue #31)
