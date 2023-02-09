@@ -17,7 +17,9 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
   code_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\test"
-  tpl_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Shortened105_estSel_Rdevs"
+  tpl_loc_normal <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Shortened105_estSel_Rdevs"
+  tpl_loc_fixF <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\YFT_2area_7fleets_F0.0001_update3"
+  
 }
 if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #data_loc is where you have your YFT data stored (have to clone repo from github)
@@ -32,7 +34,9 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
   code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
   mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
-  tpl_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Shortened105_estSel_Rdevs"
+  tpl_loc_normal <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Shortened105_estSel_Rdevs"
+  tpl_loc_fixF <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\YFT_2area_7fleets_F0.0001_update3"
+  
 }
 
 #FOR OTHER USERS, CAN ENTER LOCATIONS HERE ONCE
@@ -80,8 +84,8 @@ om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = FALSE, rem
 load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
 dat <- dat_4A_4
 bdat <- biol_dat 
-mod_name <- "YFT_2area_4fleets_F0.0001"
-om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = TRUE, remove_regions = c(2,3))
+mod_name <- "YFT_2area_4fleets_F0.0001_13alk"
+om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = TRUE, remove_regions = c(2,3), tpl = "fixF", move = "constant with penalty")
 
 
 
@@ -93,7 +97,7 @@ om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = TRUE, remo
 #run: whether to run the EM
 #fleetcombo: do you want combine some fleets (TRUE or FALSE); define fleet combos in newfleets list below
 
-mungeData <- function(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE, remove_regions = NULL){
+mungeData <- function(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE, remove_regions = NULL, tpl = "normal", move = FALSE){
   
 ###########
 #if desired then combine data to reduce number of fleets
@@ -751,6 +755,23 @@ om_rep[(loc + 1)] <- 0.1
 
 
 ####
+#Movement - if movement dynamics are selected
+####
+if(move=="constant with penalty") {
+  loc <- grep("#move_switch$", om_rep)
+  om_rep[(loc+1)] <- 2
+  loc <- grep("#phase_T_CNST$", om_rep)
+  om_rep[(loc+1)] <- 2
+  loc <- grep("#move_pen", om_rep)
+  om_rep[(loc+1)] <- 1
+  loc <- grep("#wt_move_pen", om_rep)
+  om_rep[(loc+1)] <- 1
+  loc <- grep("#Tpen", om_rep)
+  om_rep[(loc+1)] <- -1.5
+}
+
+
+####
 #Bounds
 ####
 
@@ -808,11 +829,14 @@ om_rep[loc+1] <- "4"
 
 ####
 #Save YFT model as .dat file, copy .tpl over
+#If tpl is "normal" then copy over tpl from earlier runs
+#If tpl is "fixF" tehn copy over version where F = 0.0001 and sel = 1 when observed catch is 0
 ####
 
 setwd(file.path(mod_loc, mod_name, "Estimation_Model"))
 writeLines(om_rep, paste0(mod_name,".dat"))
-file.copy(from = file.path(tpl_loc, "YFT_1area.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
+if(tpl == "normal") file.copy(from = file.path(tpl_loc_normal, "YFT_1area.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
+if(tpl == "fixF") file.copy(from = file.path(tpl_loc_fixF, "Estimation_Model", "YFT_2area_7fleets_F0.0001_update3.tpl"), to=file.path(getwd(), paste0(mod_name,".tpl"))) #Will return FALSE if files already exist
 shell(paste0("admb ",mod_name)) #build .exe from the .tpl
 
 
