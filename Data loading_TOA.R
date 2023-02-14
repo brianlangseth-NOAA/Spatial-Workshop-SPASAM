@@ -124,35 +124,52 @@ check_entry = function(loc, loc_end, new_entry){
   }
 }
 
-
 #Function to pull values in 'simdat' from separate variable names together
 #name is the field desired within the simulation data (e.g CAA data)
 var_to_data <- function(name){
-  if(name == "CAA") var = "obs" #field name where data are
-  if(name == "") var = ""
-  if(name == "") var = ""
+  if(name == "CAA") var = c("obs","N") #field name where data are and error_value
+  if(name == "cpue") var = c("obs","cv")
+  if(name == "tag") var = c("obs")
   if(name == "") var = ""
   if(name == "") var = ""
   
   varnames <- names(simdat)[grep(name, simdat)]
   
   for(i in 1:length(varnames)){
-    temp <- simdat[varnames[i]][[varnames[i]]]
-    temp_yr <- temp$year
-    temp_dat = temp[[var]]
-    temp_dat$year <- as.numeric(temp_yr)
+    temp <- simdat[varnames[i]][[varnames[i]]] #dataset
+    temp_dat = temp[[var[1]]] #take observations from dataset
+    temp_dat$year <- as.numeric(temp$year) #assign year for the data. For tagging this is the recapture year
+    
+    #Assign error value for each line in the dataset for CAA and cpue data
+    if(name %in% c("CAA","cpue")) {
+      temp_dat$err <- as.numeric(temp$error_value[var[2]])
+    }
+    if(name == "tag"){ 
+      #assign a new error matrix for each row in the data 
+      temp_err <- temp$error_value
+      temp_err$year <- as.numeric(temp$year)
+      
+      #assign tag year for each row in the data
+      temp_dat$tagYear = as.numeric(substr(varnames[i],start = unlist(gregexpr("_",varnames[i]))[2]+1, stop = unlist(gregexpr("_",varnames[i]))[3]-1))
+    }
     
     if(i==1) {
       df <- temp_dat
+      if(name == "tag") df_err <- temp_err
     }else{
       df = rbind(df,temp_dat)
+      if(name == "tag") df_err <- rbind(df_err,temp_err)
     }
   }
   
-  df_full <- right_join(df,data.frame("year"=c(1995:2021)),by="year") %>% replace(is.na(.),0) %>% arrange(year)
-  names(df_full)[2:(length(names(df_full))-1)] = temp$min_age:temp$max_age
+  #For CAA and CPUE only: Include all years 1995 to 2021 whether those years have data or not
+  if(name %in% c("CAA","cpue")) df_full <- right_join(df,data.frame("year"=c(1995:2021)),by="year") %>% replace(is.na(.),0) %>% arrange(year)
+  if(name == "CAA") names(df_full)[2:(length(names(df_full))-2)] <- temp$min_age:temp$max_age
   
-  return(df_full)
+  #For tagging only: Include the years with variables and include the error
+  if(name %in% c("CAA","cpue")) return(df_full) 
+  if(name %in% c("tag")) return(list("obs" = df, "err" = df_err))
+
 }
 
 ####################
@@ -201,144 +218,74 @@ om_rep[(loc + 1):(loc + Nyear)] <- new_val
 #For TIM, the comp data is of age comps by year
 #For TOA data, the comp data is of age comps by region for each year
 
-age_comps <- var_to_data("CAA")
-
-lengths=seq(10,205,by=5)
-Latage=c(22,
-         35.2865,
-         41.384,
-         45.7348,
-         49.904,
-         53.8991,
-         57.7273,
-         64.2198,
-         74.721,
-         85.5489,
-         96.3811,
-         105.259,
-         112.534,
-         118.496,
-         123.383,
-         127.387,
-         130.669,
-         133.359,
-         135.563,
-         137.369,
-         138.85,
-         140.063,
-         141.058,
-         141.872,
-         142.54,
-         143.088,
-         143.536,
-         144.168)
-#Function to calculate probability in a given length interval
-getprob=function(L1=NULL,L2=NULL,meanL=NULL,sd=NULL){
-  #prob=pnorm(L2,mean=meanL,sd=sd)-pnorm(L1,mean=meanL,sd=sd)
-  prob=plnorm(L2,meanlog=meanL,sdlog=sd)-plnorm(L1,meanlog=meanL,sdlog=sd)
-  return(prob)
-}
-#matrix to hold alk
-plusA = 10 #how many ages to go beyond plus group
-alk=matrix(NA,nrow=length(Latage)+plusA,ncol=(length(lengths)-1),dimnames = list(paste0("a",seq(1:(length(Latage)+plusA))),paste0("l",(lengths[1:(length(lengths)-1)]))))
-for(a in 1:(length(Latage)+plusA)){ #loop over 28 ages and the length bins and calculate probability for each bin
-  for(l in 1:(length(lengths)-1)){
-    alk[a,l]=getprob(L1=lengths[l],L2=lengths[l+1],meanL=log(ifelse(!is.na(Latage[a]),Latage[a],Latage[dat$Nages])),sd=0.1)
-  }
-}
-alk=round(alk,digits=2)
-noentry = which(colSums(alk)==0) #determine which lengths dont have any entries
-alk[1,noentry[1]]=1 #set the first column to be 1 for the first age 1
-alk[dat$Nages+plusA,noentry[-1]]=1 #set the last columns to be 1 for the last age
-alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
-plusGroup = colSums(alk[dat$Nages:(dat$Nages+plusA),])
-alk=alk[1:dat$Nages,]
-alk[dat$Nages,]=plusGroup
-#Convert length comps to age comps
-#DECISION - assume OBS_catch_prop is blocked in each year for all fleets (year 1 for all fleets, then year 2 for all fleets, etc.)
-#agecomp <- as.matrix(dat$lencomp[7:ncol(dat$lencomp)]) %*% t(alk)
-agecomp <- as.matrix(dat$lencomp[which(colnames(dat$lencomp) %in% paste0("l",seq(10,200,by=5)))]) %*% t(alk)
-agecomp_prop <- agecomp/rowSums(agecomp)
-agecomp_yr <- cbind("Yr" = dat$lencomp$Yr, "FltSvy" = dat$lencomp$FltSvy, agecomp_prop)
-for(x in 1:length(newfleets)){
-  if(x==1){
-  FltSvyB=ifelse(agecomp_yr[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,999)
-  } else {
-    FltSvyB=ifelse(agecomp_yr[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,FltSvyB)
-  }
-}
-agecomp_yr=cbind(agecomp_yr,FltSvyB)
+agecomp <- var_to_data("CAA")
 
 #Put into om_rep file
 loc <- grep("#OBS_catch_prop$", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr*dat$Nfleet, ncol = dat$Nages) #Set up for all years and fleets
-tmp_val[(dat$Nfleet * (agecomp_yr[,"Yr"] - 1) + agecomp_yr[,"FltSvyB"]),] <- agecomp_yr[,-which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy"))] #Assign for just the years and fleets in YFT data. Each year for all fleets. 
+tmp_val <- matrix(0, nrow = Nyear*Nflt, ncol = Nage) #Set up for all years and fleets
+tmp_val <- agecomp[,-which(colnames(agecomp) %in% c("year","region","err"))] #Assign for just the years and fleets in YFT data. Each year for all fleets. 
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines or remove some lines before replacing
 #TO DO (for later): adjust add lines to automatically remove lines if need be
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
-if(add_lines<0){
-  om_rep <- om_rep[-((loc+1):(loc-1*add_lines))] #remove lines so element equals the length of entry being added
+if(!add_lines){ #if not equal through warning
+  stop(paste("Lines need to be added or removed for", om_rep[loc]))
 }
-om_rep[(loc + 1):(loc + dat$endyr*dat$Nfleet)] <- new_val
+om_rep[(loc + 1):(loc + Nyear*Nflt)] <- new_val
 
 #Sample size of comps - #OBS_catch_prop_N_EM
-#DECISION: change ESS to 15 for all fleets except fleet 5 (in the 7 fleet setup), which =25
-#fleet 7 selectivity got wonky and so also make that fleet 25 ESS.
-dat$lencomp$Nsamp=ifelse(grepl("5",dat$lencomp$FltSvy) | grepl("7",dat$lencomp$FltSvy),25,15)
+#DECISION: Assume Na (from equation 3 in TOA description from github) is N in 'CAA-X-sim'$error_value
 loc <- grep("#OBS_catch_prop_N_EM", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nfleet) #Set up for all years and fleets
-tmp_val[cbind(dat$lencomp$Yr, dat$lencomp$FltSvyB)] <- dat$lencomp$Nsamp #Assign for just the years and fleets in YFT data
-new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+tmp_val <- matrix(0, nrow = Nyear, ncol = Nflt) #Set up for all years and fleets
+tmp_val <- round(agecomp$err,2)
+new_val <- tmp_val
+om_rep[(loc + 1):(loc + Nyear)] <- new_val
 
 
 ####
 #Survey
 ####
 
+surv <- var_to_data("cpue")
+
 #Survey index - #OBS_survey_fleet_bio
 loc <- grep("#OBS_survey_fleet_bio$", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[cbind(as.numeric(levels(dat$CPUE$year)),dat$Nsurveys)] <- dat$CPUE$cpu #Assign for just the years and surveys in YFT data
-new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+tmp_val <- matrix(0, nrow = Nyear, ncol = Nsurv) #Set up for all years and surveys
+tmp_val <- round(surv$cpue,2)
+new_val <- tmp_val
+om_rep[(loc + 1):(loc + Nyear)] <- new_val
 
 #True survey index - #true_survey_fleet_bio
 #This isn't used when diagnostic_switch is 0 (our default) but still change here
 loc <- grep("#true_survey_fleet_bio$", om_rep)
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+om_rep[(loc + 1):(loc + Nyear)] <- new_val
 
 #Survey index SE - #OBS_survey_fleet_bio_se_EM
 loc <- grep("#OBS_survey_fleet_bio_se_EM", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[cbind(as.numeric(levels(dat$CPUE$year)),dat$Nsurveys)] <- dat$CPUE$cv #Assign for just the years and surveys in YFT data
-new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
-#DECISION - not using precise se (not using CV to SE conversion)
+tmp_val <- matrix(0, nrow = Nyear, ncol = dat$Nsurv) #Set up for all years and surveys
+tmp_val <- sqrt(log(1+surv$err^2))
+new_val <- tmp_val
+om_rep[(loc + 1):(loc + Nyear)] <- new_val
 
-#Survey Comps - #OBS_survey_prop set to #OBS_catch_prop for fleet 3
-#DECISION - copying from proportions in fleet 3 catch for only years that overlap with cpue years. 
+#Survey Comps - #OBS_survey_prop set to #OBS_catch_prop for fleet
+#DECISION - copying from proportions in fleet catch for only years that overlap with cpue years. 
 #Believe these to be the same as the fleet comps. Can set survey select to that of catch
 loc <- grep("#OBS_survey_prop$", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr*dat$Nsurveys, ncol = dat$Nages) #Set up for all years and surveys
-#years of comp data for fleet 3 that overlap with years of CPUE data
-yrs_comp <- agecomp_yr[agecomp_yr[,"FltSvyB"]==3,"Yr"][agecomp_yr[agecomp_yr[,"FltSvyB"]==3,"Yr"] %in% dat$CPUE$year] 
-tmp_val[yrs_comp,] <- agecomp_yr[agecomp_yr[,"FltSvyB"] == 3 & agecomp_yr[,"Yr"]%in%yrs_comp, -which(colnames(agecomp_yr) %in% c("FltSvyB","Yr","FltSvy"))]
+tmp_val <- matrix(0, nrow = Nyear*Nsurv, ncol = Nage) #Set up for all years and surveys
+tmp_val <- agecomp[,-which(colnames(agecomp) %in% c("year","region","err"))] #Assign for just the years and fleets in YFT data. Each year for all fleets. 
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+om_rep[(loc + 1):(loc + Nyear)] <- new_val
 
 #Sample size of comps - #OBS_survey_prop_N_EM
-#DECISION - copying from proportions in fleet 3 catch for only years that overlap with cpue years.  
+#DECISION - copying from proportions in fleet catch for only years that overlap with cpue years.  
 #Believe these to be the same as the fleet comps. Can set survey select to that of catch.
-#DECISION - What is NCPUEObs though?
+#DECISION - Use same N as fleet prop
 loc <- grep("#OBS_survey_prop_N_EM", om_rep)
-tmp_val <- matrix(0, nrow = dat$endyr, ncol = dat$Nsurveys) #Set up for all years and surveys
-tmp_val[yrs_comp,] <- dat$lencomp[dat$lencomp$FltSvyB==3 & dat$lencomp$Yr%in%yrs_comp,]$Nsamp #Assign for just the years and fleets in YFT data
-new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
-
+tmp_val <- matrix(0, nrow = Nyear, ncol = Nflt) #Set up for all years and fleets
+tmp_val <- round(agecomp$err,2)
+new_val <- tmp_val
+om_rep[(loc + 1):(loc + Nyear)] <- new_val
 
 ####
 #Rec index
@@ -347,7 +294,7 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 #Rec index - #OBS_rec_index_BM
 #DECISION - set to zero
 loc <- grep("#OBS_rec_index_BM", om_rep)
-tmp_val <- rep(0, dat$endyr)
+tmp_val <- rep(0, Nyear)
 new_val <- paste(tmp_val, collapse = " ")
 om_rep[(loc + 1)] <- new_val
 
@@ -355,6 +302,13 @@ om_rep[(loc + 1)] <- new_val
 ####
 #Tagging
 ####
+
+#Number of realized tags
+#DECISION: round to integer
+tdat$year = as.numeric(tdat$year)
+tdat_df <- tdat %>% group_by(year) %>% summarize(sum=sum(total)) %>% round(.,0)
+
+recap <- var_to_data("tag")
 
 #Have tag switch off - #do_tag
 loc <- grep("#do_tag$", om_rep)
@@ -365,44 +319,41 @@ om_rep[(loc + 1)] <- 0
 
 #Number of years with tag releases - #nyrs_release
 loc <- grep("#nyrs_release", om_rep)
-om_rep[(loc + 1)] <- length(unique(dat$tag_releases$yr)) #NOT equal to dat$N_tag_groups (which is number tag release events, not years)
+om_rep[(loc + 1)] <- length(unique(tdat_df$year))
 
 #Years of tag releases - #years_of_tag_releases
 loc <- grep("#years_of_tag_releases", om_rep)
-tmp_val <- unique(dat$tag_releases$yr)
+tmp_val <- sort(unique(tdat_df$year))-(1995-1) #year 1 is 1995
 om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 #Lifespan of tags
-#DECISION - Set to fixed value (originally assumed it equals to maximum difference in year recapture from year released within data)
-#Originally had as max_periods but that is SS-speak and is the periods after which tags go into the accumulator
-#age. See issue #6: https://github.com/aaronmberger-nwfsc/Spatial-Assessment-Modeling-Workshop/issues/6
-full_recap_info <- merge(dat$tag_releases, dat$tag_recaps, by = "tg") #combine tag release and recapture information by tag (tg)
-full_recap_info$yr_diff <- full_recap_info$yr.y - full_recap_info$yr.x
-table(full_recap_info$yr_diff)
-maxlife <- 18 #max(full_recap_info$yr_diff) #16 is 90% quantile, 18 is 92%, 21 is 95%
+#DECISION - Assume to be 16 which is maximum value
+#unique(data.frame(recap$obs)[,c("year")]-data.frame(recap$obs)[,c("tagYear")])
+maxlife <- 16 #max(full_recap_info$yr_diff) #16 is 90% quantile, 18 is 92%, 21 is 95%
 loc <- grep("#max_life_tags", om_rep)
 om_rep[(loc + 1)] <- maxlife
 
 #DECISION - age of full selection (kept currently at 8)
 
 #Tag report rate - #...report_rate...
-#DECISION - fix at true value from OM (but reset EM to be the same)
-#but dont have likelihood penalty (wt_B_pen = 0) so dont need report_rate_ave or report_rate_sigma
-#Use based on analyst guidance document (https://aaronmberger-nwfsc.github.io/Spatial-Assessment-Modeling-Workshop/articles/Analyst_guidance.html)
+#DECISION - fix at same values from YFT
+#These assumptions are ignored based on analyst guidance document (https://aaronmberger-nwfsc.github.io/Spatial-Assessment-Modeling-Workshop/articles/OM_Description_TOA.html)
 loc <- grep("#report_rate_switch", om_rep)
 om_rep[(loc + 1)] <- 0 #stay at 0
 loc <- grep("#input_report_rate_EM", om_rep)
 om_rep[(loc + 1)] <- 0.9
 loc <- grep("#report_rate_TRUE", om_rep)
-new_val <- rep(0.9, length(unique(dat$tag_releases$yr)))
+new_val <- rep(0.9, length(unique(tdat_df$year)))
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
 if(!is.logical(add_lines)) {
-  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+  stop(paste("Lines need to be added or removed for", om_rep[loc]))
 }
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
-#DECISION - there is no tag retention or tag loss in the TIM yet. It is in YFT
+
+
+#<<<<<<<<<<<<CONTINUE HERE<<<<<<<<<<<<<<<<<
 
 #Tags released - #ntags
 #YFT data already adjusts for initial tagging mortality
