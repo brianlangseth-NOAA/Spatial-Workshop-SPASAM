@@ -14,7 +14,7 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   #data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
   data_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Assessment-Modeling-Workshop\\data"
-  master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model"
+  master_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Operating_Model_TOA"
   code_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM"
   mod_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\test"
   tpl_loc <- "C:\\Users\\Brian.Langseth\\Desktop\\Spatial-Workshop-SPASAM\\Shortened105_estSel_Rdevs"
@@ -29,7 +29,7 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
   #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_current_UseThese"
   #data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data\\Datasets_old_DoNotUse"
   data_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Assessment-Modeling-Workshop\\data"
-  master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model"
+  master_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Operating_Model_TOA"
   code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
   mod_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
   tpl_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main\\Shortened105_estSel_Rdevs"
@@ -45,43 +45,14 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 ######################################################
 
 #One area - can adjust for other datasets
-load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
-dat <- dat_1A_4
-bdat <- biol_dat 
-mod_name <- "YFT_1area_7fleets_12_hess"
-om_rep <- mungeData(mod_name, reduce = 105, run = TRUE, fleetcombo=FALSE) #reduce = 105
-
-
-#One area with 100 runs - ESS_05 is the base
-load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
-bdat <- biol_dat #this is only available in the single dataset
-load(file.path(data_loc,'YFT_1area_observations_1_100_ESS_05.RData'))
-for(i in 1:100){
-  dat <- get(paste0("dat_1A_",i))
-  mod_name <- paste0("YFT_1area_100sets",i)
-  om_rep <- mungeData(mod_name, reduce = 105, run = TRUE, fleetcombo = FALSE)
-  cat(paste0("\n Data set",i),"\n ")
-}
-
-
-#Redo "bad" runs from one area attempt - ESS_05 is the base
-load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
-bdat <- biol_dat #this is only available in the single dataset
-load(file.path(data_loc,'YFT_1area_observations_1_100_ESS_05.RData'))
-for(j in 1:nrow(badruns)){
-  i=badruns[j,"i"]
-  dat <- get(paste0("dat_1A_",i))
-  mod_name <- paste0("YFT_1area_100sets",i)
-  om_rep <- mungeData(mod_name, reduce = 105, run = TRUE)
-  cat(paste0("\n Data set",i),"\n ")
-}
-
-#One area 4 fleets with years not reduced
-load(file.path(data_loc,'YFT_SRD_1A_4.RData'))
-dat <- dat_1A_4
-bdat <- biol_dat 
-mod_name <- "YFT_temp"
-om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo=TRUE)
+load(file.path(data_loc,'TOA_simulations_inputs_1region.RData'))
+load(file.path(data_loc,'TOA.simulations.singlearea.external.RData'))
+cdat <- realised.catches[[1]] #use dataset 1 for one dataset trial
+cdat$year = as.numeric(cdat$year)
+tdat <- realised.tags[[1]] #use dataset 1 for one dataset trial
+simdat <- sim[1:227] #each dataset is 227 entries. Use dataset 1 for one dataset trial
+mod_name <- "TOA_1area"
+om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE)
 
 
 ########################################################################################
@@ -93,77 +64,6 @@ om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo=TRUE)
 #fleetcombo: do you want combine some fleets (TRUE or FALSE); define fleet combos in newfleets list below
 
 mungeData <- function(mod_name, reduce = NULL, run = FALSE,fleetcombo=FALSE){
-
-###########
-#if desired then combine data to reduce number of fleets
-###########
-if(fleetcombo){
-  newfleets=list(c(1,2,7),3,c(4,6),5)
-  
-  #quick loop to sum catches etc.
-  for(f in 1:length(newfleets)){
-    if(f==1){
-      #sum total catches by desired fleet combos
-      newcatch=data.frame(rowSums(dat$catch[newfleets[f][[1]]]))
-      colnames(newcatch)=paste(newfleets[f][[1]],collapse="")
-      
-      #combine len comps over desired fleets
-      newlencomp <-
-        dat$lencomp[which(dat$lencomp$FltSvy %in% newfleets[f][[1]]),] %>% 
-        group_by(Yr) %>% 
-        summarise(across(l10:l200,sum))
-      newlencomp$FltSvy=paste(newfleets[f][[1]],collapse="")
-      
-    } else {
-      newcatch=cbind(newcatch,rowSums(dat$catch[newfleets[f][[1]]]))
-      colnames(newcatch)[f]=paste(newfleets[f][[1]],collapse="")
-      
-      #combine lencomps
-      tempcomp <-
-        dat$lencomp[which(dat$lencomp$FltSvy %in% newfleets[f][[1]]),] %>% 
-        group_by(Yr) %>% 
-        summarise(across(l10:l200,sum))
-      tempcomp$FltSvy=paste(newfleets[f][[1]],collapse="")
-      newlencomp=rbind(newlencomp,tempcomp)
-      
-    } #end else
-  } #end for loop
-  sel_switch=paste(ifelse(colnames(newcatch)[1:length(newfleets)]=="3",1,2),collapse=" ") #define selectivity by fleet
-  newcatch=cbind(newcatch,year=dat$catch$year) #add year and seas column to new catch to match original dat
-  newcatch=cbind(newcatch,seas=dat$catch$seas)
-  newse_log_catch=dat$se_log_catch[1:length(newfleets)] #define catch se for new catch file
-  nfleets_EM=length(newfleets) #redefine number of fleets
-  #add some columns to new lencomp and change some to numeric to match original dat
-  newlencomp$FltSvy=as.numeric(newlencomp$FltSvy)
-  newlencomp$Seas=1
-  newlencomp$Gender=0
-  newlencomp$Part=0
-  newlencomp$Nsamp=5
-  
-  #replace values in dat with combined fleet data
-  dat$catch=newcatch
-  dat$se_log_catch=newse_log_catch
-  dat$lencomp=data.frame(newlencomp)
-  dat$Nfleet=nfleets_EM
-  
-} else { #end if fleetcombo
-  #DECISION: set additional fleets (fleet 4 and 6) to have logistic selectivity - see github issue #47
-  newfleets=list(c(1),c(2),c(3),c(4),c(5),c(6),c(7))
-  sel_switch=c("2 2 1 1 2 1 2")
-  nfleets_EM=7
-  
-} #end else for if fleetcombo
-  
-#When I combine fleets they don't equal a simple sequence, which broke some Langseth code. This is needed for my solution.
-  for(x in 1:length(newfleets)){
-    if(x==1){
-      FltSvyB=ifelse(dat$lencomp[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,999)
-    } else {
-      FltSvyB=ifelse(dat$lencomp[,"FltSvy"]==as.numeric(paste(newfleets[x][[1]],collapse="")),x,FltSvyB)
-    }
-  }
-  dat$lencomp=cbind(dat$lencomp,FltSvyB)
-  
 
 ####################
 #Set up OM.rep file
@@ -190,7 +90,7 @@ setwd(file.path(mod_loc, mod_name, "Operating_Model"))
 if(length(list.files())==0){
   file.copy(from = file.path(master_loc, "TIM_OM.exe"), to=getwd()) #Will return FALSE if files already exist
   file.copy(from = file.path(master_loc, "TIM_OM.tpl"), to=getwd()) #Will return FALSE if files already exist
-  file.copy(from = file.path(mod_loc, "Panmictic", "Operating_Model", "TIM_OM_all.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
+  file.copy(from = file.path(master_loc, "TIM_OM_1area.dat"), to = "TIM_OM.dat") #Will return FALSE if files already exist
   invisible(shell(paste0("TIM_OM.exe"," -nox -nohess"), wait=T))
   file.remove(list.files()[-grep(".rep|.tpl|.exe|.dat", list.files())]) #remove extra files
   print("OM run completed")
@@ -225,16 +125,54 @@ check_entry = function(loc, loc_end, new_entry){
 }
 
 
+#Function to pull values in 'simdat' from separate variable names together
+#name is the field desired within the simulation data (e.g CAA data)
+var_to_data <- function(name){
+  if(name == "CAA") var = "obs" #field name where data are
+  if(name == "") var = ""
+  if(name == "") var = ""
+  if(name == "") var = ""
+  if(name == "") var = ""
+  
+  varnames <- names(simdat)[grep(name, simdat)]
+  
+  for(i in 1:length(varnames)){
+    temp <- simdat[varnames[i]][[varnames[i]]]
+    temp_yr <- temp$year
+    temp_dat = temp[[var]]
+    temp_dat$year <- as.numeric(temp_yr)
+    
+    if(i==1) {
+      df <- temp_dat
+    }else{
+      df = rbind(df,temp_dat)
+    }
+  }
+  
+  df_full <- right_join(df,data.frame("year"=c(1995:2021)),by="year") %>% replace(is.na(.),0) %>% arrange(year)
+  names(df_full)[2:(length(names(df_full))-1)] = temp$min_age:temp$max_age
+  
+  return(df_full)
+}
 
 ####################
 ##Data Munging!!!!
 ####################
 
+####
+#Set up basic values like number of ages and number of years because these are not in dataset
+####
+
+Nflt = 1
+Nsurv = 1
+Nyear = 27
+Nage = 30
+
 #The following element may be able to be removed after updating SIM_TIM.R (see issue 17)
 
-#Add switch for catch in numbers after the switch for SSB_type
+#Keep switch for catch in numbers after the switch for SSB_type so runs well with existing YFT EM
 loc <- grep("#SSB_type", om_rep)
-om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
+om_rep <- append(om_rep, c("#catch_num_switch",0), after = (loc+1))
 
 
 ####
@@ -242,19 +180,17 @@ om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
 ####
 
 #Catch - OBS_yield_fleet
+#Based on values in Table 2 of Mormede et al. 2014 these appear to be in KG. Need MTs so divide by 1000
 loc <- grep("#OBS_yield_fleet$", om_rep)
-new_val <- tidyr::unite(
-  round(dat$catch[,1:nfleets_EM], 3), #DECISION - round to 3 decimals
-  sep = " ", 
-  col = "new_val")
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val$new_val
+new_val <- cdat %>% group_by(year) %>% summarize(sum = sum(catch)/1000) %>% 
+  right_join(.,data.frame("year"=c(1995:2021)),by="year") %>% replace(is.na(.),0) %>% arrange(year)
+om_rep[(loc + 1):(loc + Nyear)] <- round(new_val$sum,3) #DECISION - round to 3 decimals
 
 #Catch SE - OBS_yield_fleet_se_EM
-#DECISION - Switch catch SE from dat$se_log_catch (0.01) to 0.2, vastly improved run-time and other diagnostics
-dat$se_log_catch=dat$se_log_catch*20
+#DECISION - No observation error observed so fix to low value 0.05
 loc <- grep("#OBS_yield_fleet_se_EM", om_rep)
-new_val <- rep(paste(dat$se_log_catch, collapse = " "),dat$endyr)
-om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
+new_val <- rep(paste(0.05, collapse = " "),Nyear)
+om_rep[(loc + 1):(loc + Nyear)] <- new_val
 
 
 ####
@@ -263,13 +199,10 @@ om_rep[(loc + 1):(loc + dat$endyr)] <- new_val
 
 #Length Comp - #OBS_catch_prop
 #For TIM, the comp data is of age comps by year
-#For YFT data, the comp data is of length comps by year
-#So Create age-length key taken from Jon's ALK.R and modified
-#DECISION - dat$lbin_vector final bin is 198, whereas dat$lencomp final bin is 200. Assume it should be 200
-#DECISION - set end of final lbin to be 205 cm (as opposed to ongoing) Thus assume the catches in bin 200 go up to 205
-#DECISION - assume lognormal error for distribution of lengths around an age
-#DECISION - round pdf probability to 2 sig digits (which truncates the possible ages with probability)
-#DECISION - not using precise se (not using CV to SE conversion)
+#For TOA data, the comp data is of age comps by region for each year
+
+age_comps <- var_to_data("CAA")
+
 lengths=seq(10,205,by=5)
 Latage=c(22,
          35.2865,
