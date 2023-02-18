@@ -1,13 +1,5 @@
-library(ggplot2)
-library(ggforce)
-library(reshape2)
-library(dplyr)
-library(matrixStats)
-library(grid)
-library(gridExtra)
 library(PBSadmb)
-library(gtable)
-library(corrplot)
+library(dplyr)
 ####
 #User directories
 ####
@@ -37,14 +29,14 @@ mod_name = "YFT_1area_7fleets_12"
 setwd(file.path(code_loc, mod_name, "Estimation_Model"))
 em_rep<-readList(paste0(mod_name,".rep")) #read in .rep file
 
-#TO DO: JON I DONT HAVE ACCESS TO THESE SO YOU WILL HAVE TO DO THEM AND CONFIRM THE OUTPUT WORKS
-# #Read in the 100 single area models
-# for(i in 1:100){
-#   mod_name <- paste0("YFT_1area_100sets",i)
-#   om_rep <- readList(file.path(code_loc, mod_name, "Estimation_Model", paste0(mod_name,".rep")))
-#   assign(paste0("om_rep",i),om_rep)
-#   cat(paste0("\n Assigned data set",i),"\n ")
-# }
+#TO DO: JON I DONT HAVE ACCESS TO THESE BUT THIS SCRIPT SHOULD BE ABLE TO READ EACH RUN
+#Read in the 100 single area models
+for(i in 1:100){
+  mod_name <- paste0("YFT_1area_100sets",i)
+  om_rep <- readList(file.path(code_loc, mod_name, "Estimation_Model", paste0(mod_name,".rep")))
+  assign(paste0("om_rep",i),om_rep)
+  cat(paste0("\n Assigned data set",i),"\n ")
+}
 
 #Spatial model
 mod_name = "YFT_2area_7fleets_F0.0001_update3"
@@ -127,7 +119,7 @@ summaryResults <- function(var, var_spatial){
   teamSPASAM_spat_rds_num	<- 4                              # the run corresponding to the representative data set (i.e., #4)
   teamSPASAM_spat_nyrs <- var_spatial$nyrs	                # number of timesteps for each spatial model run
   teamSPASAM_spat_nareas <- var_spatial$nregions	          # number of areas for each spatial model run
-  teamSPASAM_spat_flts <- varspatial$nfleets		            # number of fleets per area for each spatial model run (1, nareas)
+  teamSPASAM_spat_flts <- var_spatial$nfleets		            # number of fleets per area for each spatial model run (1, nareas)
   teamSPASAM_spat_flts_names	<- 
     if(var_spatial$nfleets == 7) c("Gill", "Hand", "LL", "Other", "BB", "PS", "Trol")
     if(var_spatial$nfleets == 4) c("Gill-Hand_Trol", "LL", "Other-PS", "BB")
@@ -156,14 +148,14 @@ summaryResults <- function(var, var_spatial){
   teamSPASAM_spat_move <- 		                              # movement matrix (1,nyrs,1,nsims,1, nareas, 1, nareas)
     array(cbind(var_spatial$T_year[1:var_spatial$nyrs,], 
           var_spatial$T_year[(var_spatial$nyrs + 1):(2*var_spatial$nyrs),]), dim = c(var_spatial$nyrs, var_spatial$nregions, var_spatial$nregions)) 
-  #Need to resolve this
+  #For F need lots of extra steps
+  #Var_spatial$F_year entered as 151 years for area 1 (as rows) for each fleet (as columns) followed by 151 years for area 2 (as the next set of rows)  
   temp_F_year <- cbind(rep(1:var_spatial$nyrs, var_spatial$nregions), rep(1:var_spatial$nregions, each = var_spatial$nyrs),var_spatial$F_year)
+  #Reorder so these are ordered by the first year for each area, followed by the second year for each area, etc.
   F_year_reord <- temp_F_year[order(temp_F_year[,1]),] #order F_year based on year first (column 1), then region (column2)
-  teamSPASAM_spat_F <-                                  		# fishing mortality (1, nareas, 1,nflts, 1, nyrs, 1, nsims)
-    temp = array(F_year_reord[,-c(1,2)], dim = c(var_spatial$nregions, var_spatial$nfleets, var_spatial$nyrs)) 
-    temp = array(var_spatial$F_year, dim = c(var_spatial$nregions, var_spatial$nfleets, var_spatial$nyrs)) 
-    array(cbind(var_spatial$F_year[1:var_spatial$nyrs,], 
-          var_spatial$F_year[(var_spatial$nyrs + 1):(2*var_spatial$nyrs),]), dim = c(var_spatial$nregions, var_spatial$nfleets, var_spatial$nyrs)) 
+  #Set up as 3D array with correct dimensions
+  new_F_year <- array(unlist(split(data.frame(F_year_reord[,-c(1,2)]), rep(1:var_spatial$nyrs, each  = var_spatial$nregions))), c(var_spatial$nregions, var_spatial$nfleets, var_spatial$nyrs))
+  teamSPASAM_spat_F <- new_F_year                        		# fishing mortality (1, nareas, 1,nflts, 1, nyrs, 1, nsims)
   teamSPASAM_spat_F_CV <- NA                    		        # uncertainty (CV) for F (1,areas, 1,nflts, 1, nyrs, 1, nsims)
   ##TO DO: Same comment as above for ssb_cv
   
@@ -176,6 +168,5 @@ summaryResults <- function(var, var_spatial){
   names(output) = ls()[grep("team",ls())]
   
   return(output)
-  
   
 }
