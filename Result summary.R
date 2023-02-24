@@ -24,38 +24,56 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 #So far just done for one simulation run. Need to apply for the 100 simulations for the single area model
 
 #Single area model
-# TO DO: This needs to updated with the most recent normal ALK model
-mod_name = "YFT_1area_7fleets_12" 
+mod_name = "YFT_1area_7fleets_14" 
 setwd(file.path(code_loc, mod_name, "Estimation_Model"))
 em_rep<-readList(paste0(mod_name,".rep")) #read in .rep file
 
 #TO DO: JON I DONT HAVE ACCESS TO THESE BUT THIS SCRIPT SHOULD BE ABLE TO READ EACH RUN
 #Read in the 100 single area models
 for(i in 1:100){
-  mod_name <- paste0("YFT_1area_100sets",i)
+  if(i==1){
+  mod_name <- paste0("YFT_1area_normcomp_100sets",i)
   om_rep <- readList(file.path(code_loc, mod_name, "Estimation_Model", paste0(mod_name,".rep")))
-  assign(paste0("om_rep",i),om_rep)
-  cat(paste0("\n Assigned data set",i),"\n ")
+  #assign(paste0("om_rep",i),om_rep)
+  #cat(paste0("\n Assigned data set",i),"\n ")
+  out1 <- summaryResults(om_rep, var_spatial = NULL)
+  } else {
+  mod_name <- paste0("YFT_1area_normcomp_100sets",i)
+  om_rep <- readList(file.path(code_loc, mod_name, "Estimation_Model", paste0(mod_name,".rep")))
+  tempout<-summaryResults(om_rep, var_spatial = NULL)
+  for(e in 1:length(tempout)){
+    if(length(tempout[[e]])==1){
+    out1[[e]]=append(out1[[e]],tempout[[e]])
+    }
+    if(NCOL(tempout[[e]])==1 & NROW(tempout[[e]])>1){
+      out1[[e]]=cbind(out1[[e]],tempout[[e]])
+    }
+    if(NCOL(tempout[[e]])>1 & NROW(tempout[[e]])>1){
+      out1[[e]]=rbind(out1[[e]],tempout[[e]])
+    }
+  }
+  }
 }
+#Save output as .RData file
+save(out1, file = file.path(code_loc, "teamSPASAM_wkshp_pan.RData"))
 
 #Spatial model
-mod_name = "YFT_2area_7fleets_F0.0001_update3"
+mod_name = "YFT_2area_4fleets_F0.0001_13alk"
 setwd(file.path(code_loc, mod_name, "Estimation_Model"))
 em_rep_spatial<-readList(paste0(mod_name,".rep")) #read in .rep file
 
 #Output these into desired format using the funtion below
 #Currently this is set up for 1 simulation.
-out1 <- summaryResults(em_rep, em_rep_spatial)
-
+out1 <- summaryResults(var=NULL, var_spatial = em_rep_spatial)
 #Save output as .RData file
-save(out1, file = file.path(code_loc, "teamSPASAM_wkshp.RData"))
+save(out1, file = file.path(code_loc, "teamSPASAM_wkshp_spatial.RData"))
 
 
 ##
 #Function to get report file into desired format
 ##
 
-summaryResults <- function(var, var_spatial){
+summaryResults <- function(var=NULL, var_spatial=NULL){
   
   ########### Background info ############################################
   teamSPASAM_team	<- "SPASAM"                 # as character, team name
@@ -75,9 +93,9 @@ summaryResults <- function(var, var_spatial){
   teamSPASAM_b0_calc <- "yes"	                # as character, B0 calculated? (yes, no)
   teamSPASAM_BRPs_type	<- "depletion"        # as character, other reference points that were calculated, list all that will be reported below (FMSY, %B0, depletion)
   ##CONFIRM: I write depletion because we have that as an output in the report
-  
+  if(!is.null(var)){
   ####### 1-area model results ##########################################
-  teamSPASAM_pan_nsims <- 1		                # number of simulation runs provided for 1-area model
+  teamSPASAM_pan_nsims <- 100		                # number of simulation runs provided for 1-area model
   ##TO DO: Need to update this to 100. Right now just working on 1
   
   teamSPASAM_pan_rds_num	<- 4                # the run corresponding to the representative data set (i.e., #4)
@@ -113,7 +131,9 @@ summaryResults <- function(var, var_spatial){
   
   teamSPASAM_pan_catch <- rowSums(var$OBS_yield_fleet) # catch (1,nyrs,1, nsims)
   
-  
+     } #close if is not null for one are var
+
+  if(!is.null(var_spatial)){
   ####### Spatial model results ##########################################
   teamSPASAM_spat_nsims <- 1		                            # number of simulation runs provided for spatial model
   teamSPASAM_spat_rds_num	<- 4                              # the run corresponding to the representative data set (i.e., #4)
@@ -162,9 +182,9 @@ summaryResults <- function(var, var_spatial){
   teamSPASAM_spat_catch	<-                                  # catch (1,nareas,1,nyrs,1, nsims)
     rbind(rowSums(var_spatial$OBS_yield_fleet[1:var_spatial$nyrs,]),
           rowSums(var_spatial$OBS_yield_fleet[(var_spatial$nyrs+1):(2*var_spatial$nyrs),]))
-  
+  } #close if is not null spatial var_spatial
   #Make a list of all variable values and name them with their variable
-  output = lapply(ls()[grep("team",ls())], get)
+  output = lapply(ls()[grep("team",ls())], dynGet)
   names(output) = ls()[grep("team",ls())]
   
   return(output)
