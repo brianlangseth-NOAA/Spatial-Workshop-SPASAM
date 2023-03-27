@@ -87,6 +87,14 @@ bdat <- biol_dat
 mod_name <- "YFT_2area_4fleets_F0.0001_13alk"
 om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = TRUE, remove_regions = c(2,3), tpl = "fixF", move = "constant with penalty")
 
+#Four areas - with normal error for age-length key
+#OM is also set up for 7 fleets so here fleetcombo is FALSE
+load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
+dat <- dat_4A_4
+bdat <- biol_dat 
+mod_name <- "YFT_4area_7fleets_13alk"
+om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = FALSE, tpl = "fixF", move = "constant with penalty")
+
 
 
 ########################################################################################
@@ -252,7 +260,7 @@ om_rep <- append(om_rep, c("#catch_num_switch",1), after = (loc+1))
 #For testing set to 0 for now
 loc <- grep("#move_switch$", om_rep)
 om_rep[loc+1] <- 0
-#om_rep[loc+1] <- 1 # <<<<<<<<<<<<REVISIT ONCE DONE WITH TESTING
+#This is overwritten in the movement section near the end based on "move" entry for mungeData function
 
 #Resest number of surveys: TIM requires number per area, data is number across areas
 dat$Nsurveys = dat$Nsurveys/dat$N_areas
@@ -350,6 +358,14 @@ alk[1,noentry[c(1,2)]]=1 #set the first column to be 1 for the first age 1 if no
 alk[dat$Nages,noentry[-c(1,2)]]=1 #set the last columns to be 1 for the last age if normal
 alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
 alk=round(alk,digits=2)
+
+library(FSA)
+dimnames(alk) = list(c(1:28),seq(10,200,by=5))
+alkPlot(alk,"bubble",xlab="Age",ylab="Length",grid = FALSE)
+lines(Latage,col=1, lwd=1)
+
+
+
 #Convert length comps to age comps
 #DECISION - assume OBS_catch_prop is blocked in each year for all fleets (year 1 for all fleets, then year 2 for all fleets, etc.)
 #Confirmed these are blocked by area (see closed issue #31)
