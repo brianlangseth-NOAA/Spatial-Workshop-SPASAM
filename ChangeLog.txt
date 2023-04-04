@@ -1,0 +1,23 @@
+YFT_2area_4fleets_F0.0001_14alk: start  YFT_2area_4fleets_F0.0001_13alk and reduces tag_N_em to 20. Tag like is really high given only a few years of data. I fear model is taking tons of time to fit it perfectly and maybe shouldn't. 20 puts it on par with fishery comp. Fit in 1.5 hours (nohess), with descent gradient and invertible hessian. Diagnostics were as good and improved (no F spikes). New best.
+
+...15alk: start 14alk and turn on init_abund estimation. (init_abund_switch change to 0; ph_init_abund change to 2). This fit took nearly 3 hours. Fleet 2 selectivity went wonky and the total likelihood is somehow worse than 14alk, which implies a local minima (despite a really good gradient). Leave init_abund fixed for now and explore rec_apportionment or movement scenarios. Revisit init_abund later.
+
+...16alk: start 14alk. Change input_Rec_Prop_EM to 0.5 (was previously 0.25, which would work for 4 area model but not 2 area. Turn on estimation of recruitment apportionment, constant over time (makes the input_Rec_Prop_EM change moot, but wanted it corrected anyway) (apportionment_type==3; changed ph_F to 5 just to give me room to work; ph_rec_app_CNST==4) This model fit in 2 hours. Great gradient, improved fit to early index. Put 99% of recruits in area1, but that seems accurate based on OM description. No evidence of counfounding with movement as those estimates were similar to 14. Fix these at 99% and 1% for now because it doesn't make a ton of sense to estimate something so extreme. Might save time too. Play with movement and then ultimately try this again later.
+
+...17alk: start 14alk. Change input_Rec_Prop_EM to 0.99 and 0.01 (see 16alk); apportionment_type==-2; ph_rec_app_CNST== -4. Now turn on some movement. phase_T_YR_AGE_ALT_FREQ ==4 (turns on year and age-specific movement); T_est_age_freq==14 (splits population about in half with <14 immature and >14 all mature); T_est_freq==2 (every other psuedo-year or by half real year). Big ask! Fit with great gradient in 1.5 hours. Fit to area 2 index much better. Movement parms reasonable. T_est_age_freq didn't work the way I thought it would because I think it get over-ridden by juv_age. I also accidentally left phase_T_CNST==2 and I think it should be negative since I'm doing age/yr variation. Save this but try to fix these errors and see what happens.
+
+...18alk: start 17alk.  Change phase_T_CNST==-2 (shouldn't have this on since doing age/yr specific stuff. Change juv_age==9 because that is 50% mature and I want to try and create an immature versus mature difference in movement per the OM description. Leave everything else same as 17 (note: not sure how juv_age and T_est_age_freq interact, but I think what I've done will create different movement for <=9 and >9, which is what I want). Best model.
+
+
+...19alk: start 18alk. Try estimating init_abund again. See 15 alk. made ph==3 this time, which I think is same as recruitment. Not sure if that is smart or not. Everything else same as 18. Fit in 1 hour 45mins. Good gradient. Fit is comparable to 18, but likelihood is worse and fit to most data is worse, which should be mathmatically impossible; again suggesting local minima like 15alk. Give up on this.
+
+...20alk: start 18alk. Estimate movement by pseudo-year instead of every other. T_est_freq==1. Everything else like 18alk. Similar fits. No advantage to this. 18alk is best for this fleet/area setup.
+
+YFT_4area_7fleets_14alk: start YFT_4area_7fleets_13alk. Taking inspiration from the above, reduces tag_N_em to 20. Change input_Rec_Prop_EM to 0.96 for area1 and 0.01 otherwise; apportionment_type==-2; ph_rec_app_CNST== -4. Took about 30 hours. Descent gradient. Fits OK, but still some patterning, but not bad. Weird selectivity shapes for some fleet/area combos. For some reason, input_Rec_Prop_EM didn't seem to work. Rec seems even at 0.25 among areas. Might be worth another run to try and fix this because it sped up run time with 2 areas/4 fleet. If I do that run, I'll also estimate movement as in ...18alk. Just go for it, but then give up on this! Should: 1) do 100 fits with 18alk and 2) then mess with this single dataset for fun.
+
+
+
+
+
+
+
