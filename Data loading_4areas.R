@@ -106,6 +106,28 @@ bdat <- biol_dat
 mod_name <- "YFT_2area_4fleets_F0.0001_18alk"
 om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = TRUE, remove_regions = c(2,3), tpl = "fixF", move = "final")
 
+#Four area with 100 runs - ESS_05 is the base
+load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
+bdat <- biol_dat #this is only available in the single dataset
+load(file.path(data_loc,'YFT_4area_observations_1_100_ESS_05.RData'))
+for(i in 1:100){
+  dat <- get(paste0("dat_4A_",i))
+  mod_name <- paste0("YFT_4area_100sets_18alk_",i)
+  om_rep <- mungeData(mod_name, reduce = 105, run = TRUE, fleetcombo = TRUE, remove_regions = c(2,3), tpl = "fixF", move = "final")
+  cat(paste0("\n Data set",i),"\n ")
+}
+
+# #Redo "bad" runs from four area attempt - ESS_05 is the base
+# load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
+# bdat <- biol_dat #this is only available in the single dataset
+# load(file.path(data_loc,'YFT_4area_observations_1_100_ESS_05.RData'))
+# for(j in 1:nrow(badruns)){
+#   i=badruns[j,"i"]
+#   dat <- get(paste0("dat_4A_",i))
+#   mod_name <- paste0("YFT_4area_100sets_18alk_",i)
+#   om_rep <- mungeData(mod_name, reduce = 105, run = TRUE, fleetcombo = TRUE, remove_regions = c(2,3), tpl = "fixF", move = "final")
+#   cat(paste0("\n Data set",i),"\n ")
+# }
 
 
 ########################################################################################
