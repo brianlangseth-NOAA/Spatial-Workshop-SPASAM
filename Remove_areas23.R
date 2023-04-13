@@ -7,7 +7,7 @@
 #Would need to update the code if want to remove non-sequential regions and
 #update combining tag data if regions other than regions 2 and 3 are removed
 
-remove_areas23 <- function(mod_name, rm_regions){
+remove_areas23 <- function(mod_name, rm_regions, move){
   
   em_dat <- readLines(paste0(mod_name,".dat"),n=-1)
   
@@ -142,9 +142,13 @@ remove_areas23 <- function(mod_name, rm_regions){
   em_dat <- shorten_lines(em_dat, loc, rep = nyr_tag_rel, rm_regions)
   em_dat[(loc+1):(loc+nyr_tag_rel*new_reg)] <- combine_tags(em_dat, loc, nyr_tag_rel, 1, rm_regions) #need to set ages to 1 because not indexed by ages
   
-  #input_Rec_Prop_EM
+  #input_Rec_Prop_EM - HARD CODED replace with 0.99 for area 1, and 0.01 for area 2
   loc <- grep("#input_Rec_Prop_EM", em_dat)
   em_dat <- shorten_lines(em_dat, loc, rep=1, rm_regions)
+  if(move == "final") {
+    em_dat[(loc+1)] <- replace_line(em_dat, loc, 0.99)
+    em_dat[(loc+2)] <- replace_line(em_dat, loc, 0.01)
+  }
   
   #input_selectivity_EM
   #These are entered over multiple lines (4 to be exact for 7 fleet model and 7 for 4 fleet model), 
@@ -213,6 +217,8 @@ remove_areas23 <- function(mod_name, rm_regions){
   #Rec_Prop
   loc <- grep("#Rec_Prop", em_dat)
   em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
+  
+  #Fix bug so that these (with apportionment type = -2) are correctly adjustment based on the number of regions
   
   #recruits_BM
   loc <- grep("#recruits_BM", em_dat)
@@ -340,7 +346,17 @@ shorten_line <- function(datfile, var_loc, n_reg) {
   shortened <- unlist(unlisted)[-n_reg]
   return(paste(shortened, collapse = " "))
   
-} 
+}
+
+#Entries within one line of length regions that is desired to be replace by rep_val
+replace_line <- function(datfile, var_loc, rep_val) {
+  
+  unlisted <- strsplit(datfile[(var_loc+1)], split = " ")
+  unlisted <- lapply(unlisted, FUN = function(x) if(x[1] == "") x[-1] else x) #remove the empty space in first element if data was indented
+  replace <- rep(rep_val, length(unlist(unlisted)))
+  return(paste(replace, collapse = " "))
+  
+}
 
 #Entries within 'len' lines of length regions that are NOT reproduced by region
 shorten_multlines <- function(datfile, var_loc, len, n_reg) {

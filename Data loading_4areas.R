@@ -96,6 +96,17 @@ mod_name <- "YFT_4area_7fleets_13alk"
 om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = FALSE, tpl = "fixF", move = "constant with penalty")
 
 
+##
+#Final best spatial model - model 18alk
+#Include option for 100 runs
+##
+load(file.path(data_loc,'YFT_SRD_4A_4.RData'))
+dat <- dat_4A_4
+bdat <- biol_dat 
+mod_name <- "YFT_2area_4fleets_F0.0001_18alk"
+om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = TRUE, remove_regions = c(2,3), tpl = "fixF", move = "final")
+
+
 
 ########################################################################################
 #-------FUNCTION TO GET YFT DATA INTO THE PROPER FORMAT FROM THE ORIGINAL OM FILE------#
@@ -305,7 +316,7 @@ om_rep[(loc + 1):(loc + dat$endyr*dat$N_areas)] <- new_val
 #So Create age-length key taken from Jon's ALK.R and modified
 #DECISION - dat$lbin_vector final bin is 198, whereas dat$lencomp final bin is 200. Assume it should be 200
 #DECISION - set end of final lbin to be 205 cm (as opposed to ongoing) Thus assume the catches in bin 200 go up to 205
-#DECISION - assume lognormal error for distribution of lengths around an age
+#DECISION - assume normal error for distribution of lengths around an age
 #DECISION - round pdf probability to 2 sig digits (which truncates the possible ages with probability)
 #DECISION - not using precise se (not using CV to SE conversion)
 lengths=seq(10,205,by=5)
@@ -359,12 +370,10 @@ alk[dat$Nages,noentry[-c(1,2)]]=1 #set the last columns to be 1 for the last age
 alk=t(t(alk)/colSums(alk)) #divided by column sums to produce P(A|L); i.e. column sums among ages = 1
 alk=round(alk,digits=2)
 
-library(FSA)
-dimnames(alk) = list(c(1:28),seq(10,200,by=5))
-alkPlot(alk,"bubble",xlab="Age",ylab="Length",grid = FALSE)
-lines(Latage,col=1, lwd=1)
-
-
+# library(FSA)
+# dimnames(alk) = list(c(1:28),seq(10,200,by=5))
+# alkPlot(alk,"bubble",xlab="Age",ylab="Length",grid = FALSE)
+# lines(Latage,col=1, lwd=1)
 
 #Convert length comps to age comps
 #DECISION - assume OBS_catch_prop is blocked in each year for all fleets (year 1 for all fleets, then year 2 for all fleets, etc.)
@@ -533,11 +542,12 @@ new_val <- paste(colSums(tmp_val), collapse = " ")
 om_rep[(loc + 1)] <- new_val
 
 #Tag sample size - #tag_N_EM
-#DECISION - SET ARBITRARILY TO 200
+#DECISION - SET ARBITRARILY TO 200 (or 20 for final model)
 #Could set to actual sample size but may swamp likelihood
 loc <- grep("#tag_N_EM", om_rep)
 tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr))*dat$N_areas, ncol = dat$Nages) #Set up for all regions, years and ages
 tmp_val[cbind(dat$N_areas*(dat$tag_releases$reg - 1) + as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- 200 #Assign for just the years and ages in YFT data
+if(move == "final") tmp_val[cbind(dat$N_areas*(dat$tag_releases$reg - 1) + as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- 20 #Assign for just the years and ages in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
@@ -773,7 +783,7 @@ om_rep[(loc + 1)] <- 0.1
 ####
 #Movement - if movement dynamics are selected
 ####
-if(move=="constant with penalty") {
+if(move %in% c("constant with penalty", "final")) {
   loc <- grep("#move_switch$", om_rep)
   om_rep[(loc+1)] <- 2
   loc <- grep("#phase_T_CNST$", om_rep)
@@ -784,6 +794,18 @@ if(move=="constant with penalty") {
   om_rep[(loc+1)] <- 1
   loc <- grep("#Tpen", om_rep)
   om_rep[(loc+1)] <- -1.5
+}
+if(move == "final"){
+  loc <- grep("#phase_T_YR_AGE_ALT_FREQ$", om_rep) #turns on alternative frequency for year and age (other than 1)
+  om_rep[loc+1] <- 4
+  loc <- grep("#T_est_freq", om_rep) #movement every 2 years
+  om_rep[(loc+1)] <- 2
+  loc <- grep("#T_est_age_freq", om_rep) #movement every 14 ages
+  om_rep[(loc+1)] <- 14
+  loc <- grep("#juv_age", om_rep) #set juveniles to be <=9
+  om_rep[(loc+1)] <- 9
+  loc <- grep("#phase_T_CNST$", om_rep) #turn off constant movement
+  om_rep[(loc+1)] <- -2
 }
 
 
@@ -879,7 +901,7 @@ if(!is.null(reduce)) { #for removing years from the data
 if(!is.null(remove_regions)) {
   source(file.path(code_loc,"Remove_areas23.R"))
   #Read in existing model .dat file
-  new_dat <- remove_areas23(mod_name, remove_regions)
+  new_dat <- remove_areas23(mod_name, remove_regions, move)
   writeLines(new_dat, file.path(getwd(), paste0(mod_name,".dat")))
   om_rep <- new_dat
   print(paste("Areas 2 and 3 removed"))
