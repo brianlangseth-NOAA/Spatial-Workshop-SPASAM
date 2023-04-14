@@ -113,7 +113,7 @@ load(file.path(data_loc,'YFT_4area_observations_1_100_ESS_05.RData'))
 for(i in 1:100){
   dat <- get(paste0("dat_4A_",i))
   mod_name <- paste0("YFT_4area_100sets_18alk_",i)
-  om_rep <- mungeData(mod_name, reduce = 105, run = TRUE, fleetcombo = TRUE, remove_regions = c(2,3), tpl = "fixF", move = "final")
+  om_rep <- mungeData(mod_name, reduce = 105, run = FALSE, fleetcombo = TRUE, remove_regions = c(2,3), tpl = "fixF", move = "final")
   cat(paste0("\n Data set",i),"\n ")
 }
 
@@ -604,9 +604,11 @@ tmp_val[, max(nt), ] <- t(tags_yr_age) - apply(tmp_val, c(1,3), FUN = sum)
 #DECISION - Where recaptures were higher than releases set number of recaptures (which are integers) to 
 #equal the slightly lower number of tags released (which are doubles) and set non-captures to 0
 #The 0.9 age 16 fish caught in first year of release is less than...the one recaught in second year
-  tags_yr_age[,which(tmp_val[, max(nt), ]<0)] 
-  tmp_val[which(tmp_val[, max(nt), ]<0),,] 
-tmp_val[16,c(2,max(nt)),1] <- c(tmp_val[16,2,1] + tmp_val[16,max(nt),1], 0)
+  tmp_index <- which(tmp_val[, max(nt), ]<0, arr.ind = TRUE) #age and year of release of fish
+  tags_yr_age[,tmp_index[1]]
+  tmp_val[tmp_index[1],,]
+  tmp_recap <- which(tmp_val[tmp_index[1],,tmp_index[2]] > 0, arr.ind = TRUE) #year of recapture of released fish
+tmp_val[tmp_index[1], c(tmp_recap,max(nt)), tmp_index[2]] <- c(tmp_val[tmp_index[1],tmp_recap,tmp_index[2]] + tmp_val[tmp_index[1],max(nt),tmp_index[2]]/length(tmp_recap), 0)
 #Change to proportions
 #Sum number of tags for each age across possible recapture periods for each release event in each area
 for(i in 1:dim(tmp_val)[3]){
