@@ -217,8 +217,12 @@ remove_areas23 <- function(mod_name, rm_regions, move){
   #Rec_Prop
   loc <- grep("#Rec_Prop", em_dat)
   em_dat <- shorten_lines(em_dat, loc, rep = 1, rm_regions)
-  
-  #Fix bug so that these (with apportionment type = -2) are correctly adjustment based on the number of regions
+  #Fix bug so that these (with apportionment type = -2) are correctly adjusted
+  #HARD CODED replace with 0.99 for area 1, and 0.01 for area 2
+  if(move == "final") {
+    em_dat[(loc+1)] <- replace_line(em_dat, loc, 0.99)
+    em_dat[(loc+2)] <- replace_line(em_dat, loc, 0.01)
+  }
   
   #recruits_BM
   loc <- grep("#recruits_BM", em_dat)
