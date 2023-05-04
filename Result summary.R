@@ -9,7 +9,8 @@ if(Sys.getenv("USERNAME") == "Brian.Langseth") {
 }
 
 if(Sys.getenv("USERNAME") == "jonathan.deroba") {
-  code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main"
+  #code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main_area\\Spatial-Workshop-SPASAM-main" #spatial
+  code_loc <- "C:\\Spatial_SPASAM_2021_Sim\\Spatial-Workshop-SPASAM-main" #panmictic
 }
 
 ##########################################################################
@@ -21,14 +22,15 @@ if(Sys.getenv("USERNAME") == "jonathan.deroba") {
 #Get output from model runs and output it in desired format
 ##
 
-#So far just done for one simulation run. Need to apply for the 100 simulations for the single area model
 
 #Single area model
 mod_name = "YFT_1area_7fleets_14" 
 setwd(file.path(code_loc, mod_name, "Estimation_Model"))
 em_rep<-readList(paste0(mod_name,".rep")) #read in .rep file
 
-#TO DO: JON I DONT HAVE ACCESS TO THESE BUT THIS SCRIPT SHOULD BE ABLE TO READ EACH RUN
+#code in the if false makes a wonky list of the 100 panmictic fits. New code makes list of lists with one element per data.
+#Kept this just so we could check format of data as it was previously provided.
+if(false){
 #Read in the 100 single area models
 for(i in 1:100){
   if(i==1){
@@ -54,11 +56,22 @@ for(i in 1:100){
   }
   }
 }
-#Save output as .RData file
-save(out1, file = file.path(code_loc, "teamSPASAM_wkshp_pan.RData"))
+} #end if false
 
+out1=list()
+for(i in 1:100){
+  mod_name <- paste0("YFT_1area_normcomp_100sets",i)
+  om_rep <- readList(file.path(code_loc, mod_name, "Estimation_Model", paste0(mod_name,".rep")))
+  tempout<-summaryResults(var=om_rep, var_spatial = NULL)
+  tempout$run=i
+  out1[[i]]=tempout
+}
+#Save output as .RData file
+save(out1, file = file.path(code_loc, "teamSPASAM_final_pan_newformat.RData"))
+
+######################################
 #Spatial model
-mod_name = "YFT_2area_4fleets_F0.0001_13alk"
+mod_name = "YFT_2area_4fleets_F0.0001_18alk"
 setwd(file.path(code_loc, mod_name, "Estimation_Model"))
 em_rep_spatial<-readList(paste0(mod_name,".rep")) #read in .rep file
 
@@ -66,7 +79,23 @@ em_rep_spatial<-readList(paste0(mod_name,".rep")) #read in .rep file
 #Currently this is set up for 1 simulation.
 out1 <- summaryResults(var=NULL, var_spatial = em_rep_spatial)
 #Save output as .RData file
-save(out1, file = file.path(code_loc, "teamSPASAM_wkshp_spatial.RData"))
+save(out1, file = file.path(code_loc, "teamSPASAM_final_spatial_singledata.RData"))
+
+
+#Read in the 100 multi-area models
+out1=list()
+for(i in 1:100){
+    mod_name <- paste0("YFT_4area_100sets_18alk_",i)
+    om_rep <- readList(file.path(code_loc, mod_name, "Estimation_Model", paste0(mod_name,".rep")))
+    tempout<-summaryResults(var=NULL, var_spatial = om_rep)
+    tempout$run=i
+    out1[[i]]=tempout
+  }
+
+#Save output as .RData file
+save(out1, file = file.path(code_loc, "teamSPASAM_wkshp_spatial_allruns.RData"))
+########################################
+
 
 
 ##
@@ -101,9 +130,12 @@ summaryResults <- function(var=NULL, var_spatial=NULL){
   teamSPASAM_pan_rds_num	<- 4                # the run corresponding to the representative data set (i.e., #4)
   teamSPASAM_pan_nyrs	<- var$nyrs          # number of timesteps for each 1-area model run
   teamSPASAM_pan_flts <- var$nfleets       # number of fleets for each 1-area model run
-  teamSPASAM_pan_flts_names	<-             # as character, fleet names (PS, Trol, BB, LL, Gill, Hand, etc.)
-    if(var$nfleets == 7) c("Gill", "Hand", "LL", "Other", "BB", "PS", "Trol")
-    if(var$nfleets == 4) c("Gill-Hand_Trol", "LL", "Other-PS", "BB")
+  if(var$nfleets == 7) {
+    teamSPASAM_spat_flts_names	<- c("Gill", "Hand", "LL", "Other", "BB", "PS", "Trol")
+  }
+  if(var$nfleets == 4) {
+    teamSPASAM_spat_flts_names	<-c("Gill-Hand_Trol", "LL", "Other-PS", "BB")
+  }
                                            
   teamSPASAM_pan_b0	<- var$SSB_zero	          # unfished spawning biomass (1,nsims)
   teamSPASAM_pan_status_bio	<- last(var$Bratio_population) # terminal year stock status for biomass relative to B0 (1,nsims)
@@ -135,14 +167,17 @@ summaryResults <- function(var=NULL, var_spatial=NULL){
 
   if(!is.null(var_spatial)){
   ####### Spatial model results ##########################################
-  teamSPASAM_spat_nsims <- 1		                            # number of simulation runs provided for spatial model
+  teamSPASAM_spat_nsims <- 100		                            # number of simulation runs provided for spatial model
   teamSPASAM_spat_rds_num	<- 4                              # the run corresponding to the representative data set (i.e., #4)
   teamSPASAM_spat_nyrs <- var_spatial$nyrs	                # number of timesteps for each spatial model run
   teamSPASAM_spat_nareas <- var_spatial$nregions	          # number of areas for each spatial model run
   teamSPASAM_spat_flts <- var_spatial$nfleets		            # number of fleets per area for each spatial model run (1, nareas)
-  teamSPASAM_spat_flts_names	<- 
-    if(var_spatial$nfleets == 7) c("Gill", "Hand", "LL", "Other", "BB", "PS", "Trol")
-    if(var_spatial$nfleets == 4) c("Gill-Hand_Trol", "LL", "Other-PS", "BB")
+  if(var_spatial$nfleets == 7) {
+    teamSPASAM_spat_flts_names	<- c("Gill", "Hand", "LL", "Other", "BB", "PS", "Trol")
+    }
+    if(var_spatial$nfleets == 4) {
+      teamSPASAM_spat_flts_names	<-c("Gill-Hand_Trol", "LL", "Other-PS", "BB")
+    }
     # as character, fleet names (PS, Trol, BB, LL, Gill, Hand, etc.)
   teamSPASAM_spat_b0 <- var_spatial$SSB_zero		            # unfished spawning biomass (1,nsims)
   teamSPASAM_spat_status_bio <- last(var_spatial$Bratio_population)	# terminal year stock status for biomass relative to B0 (1,nsims)
