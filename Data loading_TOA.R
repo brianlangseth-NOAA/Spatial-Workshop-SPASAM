@@ -50,6 +50,7 @@ load(file.path(data_loc,'TOA.simulations.singlearea.external.RData'))
 cdat <- realised.catches[[1]] #use dataset 1 for one dataset trial
 cdat$year = as.numeric(cdat$year)
 tdat <- realised.tags[[1]] #use dataset 1 for one dataset trial
+tdat$year = as.numeric(tdat$year)
 simdat <- sim[1:227] #each dataset is 227 entries. Use dataset 1 for one dataset trial
 mod_name <- "TOA_1area"
 om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE, fleetcombo=FALSE)
@@ -165,6 +166,8 @@ var_to_data <- function(name){
   #For CAA and CPUE only: Include all years 1995 to 2021 whether those years have data or not
   if(name %in% c("CAA","cpue")) df_full <- right_join(df,data.frame("year"=c(1995:2021)),by="year") %>% replace(is.na(.),0) %>% arrange(year)
   if(name == "CAA") names(df_full)[2:(length(names(df_full))-2)] <- temp$min_age:temp$max_age
+  #For tag include column names as the ages for which tagging data is for
+  if(name == "tag") names(df)[2:(length(names(df))-2)] <- temp$min_age:temp$max_age
   
   #For tagging only: Include the years with variables and include the error
   if(name %in% c("CAA","cpue")) return(df_full) 
@@ -263,7 +266,7 @@ om_rep[(loc + 1):(loc + Nyear)] <- new_val
 
 #Survey index SE - #OBS_survey_fleet_bio_se_EM
 loc <- grep("#OBS_survey_fleet_bio_se_EM", om_rep)
-tmp_val <- matrix(0, nrow = Nyear, ncol = dat$Nsurv) #Set up for all years and surveys
+tmp_val <- matrix(0, nrow = Nyear, ncol = Nsurv) #Set up for all years and surveys
 tmp_val <- sqrt(log(1+surv$err^2))
 new_val <- tmp_val
 om_rep[(loc + 1):(loc + Nyear)] <- new_val
@@ -303,11 +306,6 @@ om_rep[(loc + 1)] <- new_val
 #Tagging
 ####
 
-#Number of realized tags
-#DECISION: round to integer
-tdat$year = as.numeric(tdat$year)
-tdat_df <- tdat %>% group_by(year) %>% summarize(sum=sum(total)) %>% round(.,0)
-
 recap <- var_to_data("tag")
 
 #Have tag switch off - #do_tag
@@ -319,17 +317,17 @@ om_rep[(loc + 1)] <- 0
 
 #Number of years with tag releases - #nyrs_release
 loc <- grep("#nyrs_release", om_rep)
-om_rep[(loc + 1)] <- length(unique(tdat_df$year))
+om_rep[(loc + 1)] <- length(unique(tdat$year))
 
 #Years of tag releases - #years_of_tag_releases
 loc <- grep("#years_of_tag_releases", om_rep)
-tmp_val <- sort(unique(tdat_df$year))-(1995-1) #year 1 is 1995
+tmp_val <- sort(unique(tdat$year))-(1995-1) #year 1 is 1995
 om_rep[(loc + 1)] <- paste(tmp_val, collapse = " ")
 
 #Lifespan of tags
 #DECISION - Assume to be 16 which is maximum value
 #unique(data.frame(recap$obs)[,c("year")]-data.frame(recap$obs)[,c("tagYear")])
-maxlife <- 16 #max(full_recap_info$yr_diff) #16 is 90% quantile, 18 is 92%, 21 is 95%
+maxlife <- 16
 loc <- grep("#max_life_tags", om_rep)
 om_rep[(loc + 1)] <- maxlife
 
@@ -343,7 +341,7 @@ om_rep[(loc + 1)] <- 0 #stay at 0
 loc <- grep("#input_report_rate_EM", om_rep)
 om_rep[(loc + 1)] <- 0.9
 loc <- grep("#report_rate_TRUE", om_rep)
-new_val <- rep(0.9, length(unique(tdat_df$year)))
+new_val <- rep(0.9, length(unique(tdat_year$year)))
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
@@ -352,22 +350,22 @@ if(!is.logical(add_lines)) {
 }
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
-
-#<<<<<<<<<<<<CONTINUE HERE<<<<<<<<<<<<<<<<<
-
 #Tags released - #ntags
-#YFT data already adjusts for initial tagging mortality
-#DECISION - assume tag releases of age 20 fish are actually age 20 fish. In reality, age 20 is a plus group for tagging
+#Note: Hard coded here for ages 3 to 30
+tdat_year <- tdat %>% group_by(year) %>% summarize(sum=sum(total)) %>% round(.,1)
+tdat_yearAge <- tdat[,-which(names(tdat) %in% c("cell","total","region"))] %>% 
+  group_by(year) %>% summarize_all(.funs = sum, na.rm=TRUE) %>% round(.,1)
+
 loc <- grep("#ntags$", om_rep)
-tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and surveys
-tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- dat$tag_releases$nrel #Assign for just the years and fleets in YFT data
-tags_yr_age <- tmp_val #save for later
+tmp_val <- matrix(0, nrow = length(unique(tdat$year)), ncol = Nage) #Set up for all years and surveys
+tmp_val[,c(2:30)] <- as.matrix(tdat_yearAge[,-1]) #Assign for just the years and ages in TOA data
+tags_yr_age <- tmp_val #save for later - has all ages
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
 add_lines <- check_entry(loc, entries[which(entries %in% loc)+1]-1, new_val)
 if(!is.logical(add_lines)) {
-  om_rep <- append(om_rep, new_val[1:add_lines], after = loc)
+  stop(paste("Lines need to be added or removed for", om_rep[loc]))
 }
 om_rep[(loc + 1):(loc + length(new_val))] <- new_val
 
@@ -377,12 +375,19 @@ loc <- grep("#ntags_total", om_rep)
 new_val <- paste(rowSums(tags_yr_age), collapse = " ") #from ntags script
 om_rep[(loc + 1)] <- new_val
 
+
+#<<<<<<<<<<<<CONTINUE HERE
+
 #Tag sample size - #tag_N_EM
-#DECISION - SET ARBITRARILY TO 200
-#Could set to actual sample size but may swamp likelihood
+#Determine number of recaptures of each tagging event by multiplying proportion recaptured from each tag release by number of tags in that release
+num_rel <- left_join(recap$obs[,"tagYear"],tdat_yearAge[,-2], by = c("tagYear" = "year"))
+num_recap <- cbind(num_rel[,1], recap$obs[,-c(1,30,31)]*num_rel[,-1])
+num_recap_yr <- 
+#DECISION - SET ARBITRARILY TO number of recaptures plus 30 per 
+#guidance on github page (https://aaronmberger-nwfsc.github.io/Spatial-Assessment-Modeling-Workshop/articles/OM_Description_TOA.html)
 loc <- grep("#tag_N_EM", om_rep)
-tmp_val <- matrix(0, nrow = length(unique(dat$tag_releases$yr)), ncol = dat$Nages) #Set up for all years and ages
-tmp_val[cbind(as.numeric(factor(dat$tag_releases$yr)), dat$tag_releases$age)] <- 200 #Assign for just the years and ages in YFT data
+tmp_val <- matrix(0, nrow = length(unique(tdat_year$year)), ncol = Nage) #Set up for all years and ages
+tmp_val[] <- 200 #Assign for just the years and ages in YFT data
 new_val <- apply(tmp_val, 1, FUN = paste, collapse = " ")
 #Check if number of entries dont match up. Append new lines before replacing
 entries <- grep("#", om_rep)
