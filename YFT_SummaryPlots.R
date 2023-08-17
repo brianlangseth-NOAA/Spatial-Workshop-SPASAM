@@ -846,9 +846,9 @@ make.plots<-function(direct=EM_direct, plot.comps = FALSE, plot.yearly.abund = F
 #############################################end code from YFT diagnostics
 
 
-for(i in 1:100){
+for(i in 1:50){
   #dat <- get(paste0("dat_1A_",i))
-  mod_name <- paste0("YFT_1area_normcomp_100sets",i)
+  mod_name <- paste0("YFT_4area_100sets_18alk_",i)
   #om_rep <- mungeData(mod_name, reduce = NULL, run = FALSE)
   #cat(paste0("\n Data set",i),"\n ")
   #################################################################################
